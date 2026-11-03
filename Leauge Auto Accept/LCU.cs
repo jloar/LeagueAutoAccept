@@ -22,6 +22,8 @@ namespace Leauge_Auto_Accept
         private const int RequestTimeoutMilliseconds = 5000;
         private const int MaxRetryAttempts = 5;
         public static bool isLeagueOpen = false;
+        public static bool isAuthReady => leagueAuth != null;
+        public static bool dataLoadFailed = false;
 
         public static void CheckIfLeagueClientIsOpenTask()
         {
@@ -45,7 +47,7 @@ namespace Leauge_Auto_Accept
                             isLeagueOpen = false;
                             MainLogic.isAutoAcceptOn = false;
                             Log.Warn("League client was found, but LCU auth data could not be read.");
-                            UI.leagueClientIsClosedMessage();
+                            lcuPid = 0; // Try again, the client may still be starting
                             Thread.Sleep(2000);
                             continue;
                         }
@@ -53,7 +55,6 @@ namespace Leauge_Auto_Accept
                         //reset restclient
                         S_restClient?.Dispose(); S_restClient = null;
 
-                        TryApplyClientLanguage();
 
                         // Check if preload data was enabled last time
                         if (Settings.preloadData)
@@ -68,21 +69,11 @@ namespace Leauge_Auto_Accept
                                 // Riot can change these responses in any patch, that should not block the main menu
                                 Log.Error(ex, "Failed to preload League data.");
                             }
-                            if (!championsLoaded)
-                            {
-                                Console.Clear();
-                                Print.printCentered(Strings.Get("some_league_data_failed"), SizeHandler.HeightCenter - 1);
-                                Print.printCentered(Strings.Get("app_keep_running_retry"));
-                                Thread.Sleep(2500);
-                            }
+                            dataLoadFailed = !championsLoaded;
                         }
                         if (Settings.shouldAutoAcceptbeOn)
                         {
                             MainLogic.isAutoAcceptOn = true;
-                        }
-                        if (UI.currentWindow != "exitMenu")
-                        {
-                            UI.mainScreen();
                         }
                     }
                 }
@@ -92,10 +83,7 @@ namespace Leauge_Auto_Accept
                     MainLogic.isAutoAcceptOn = false;
                     Data.champsSorted.Clear();
                     Data.currentSummonerId = 0;
-                    if (UI.currentWindow != "leagueClientIsClosedMessage" && UI.currentWindow != "exitMenu")
-                    {
-                        UI.leagueClientIsClosedMessage();
-                    }
+                    dataLoadFailed = false;
                 }
                 Thread.Sleep(2000);
             }
@@ -344,40 +332,6 @@ namespace Leauge_Auto_Accept
             } while ((!request.IsSuccessStatusCode || request.Data == null) && attempts < MaxRetryAttempts);
 
             return request;
-        }
-
-        private static void TryApplyClientLanguage()
-        {
-            if (!Settings.languageAutoDetectPending)
-                return;
-
-            try
-            {
-                var resp = clientRequest("GET", "/riotclient/region-locale");
-                if (resp == null || !resp.IsSuccessStatusCode || string.IsNullOrWhiteSpace(resp.Content))
-                    return;
-
-                using var doc = JsonDocument.Parse(resp.Content);
-                if (!doc.RootElement.TryGetProperty("locale", out var localeProp))
-                    return;
-
-                string matched = Strings.MatchLocale(localeProp.GetString());
-                if (matched == null)
-                    return;
-
-                Settings.currentLanguage = matched;
-                Strings.CurrentLanguage = matched;
-                Settings.languageAutoDetectPending = false;
-
-                if (Settings.saveSettings)
-                {
-                    Settings.settingsSave();
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex, "Failed to detect League Client language from region-locale.");
-            }
         }
 
         private static bool EnsureClient()

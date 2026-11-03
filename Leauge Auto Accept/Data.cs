@@ -27,9 +27,7 @@ namespace Leauge_Auto_Accept
             if (currentSummonerId == 0)
             {
                 Log.Info("Loading summonerId from service");
-                Print.printCentered(Strings.Get("getting_summoner_id"), 15);
                 var currentSummoner = LCU.clientRequestUntilSuccess<LCUTypes.LolSummonerV1CurrentSummoner>("GET", "lol-summoner/v1/current-summoner");
-                Console.Clear();
                 if (!currentSummoner.IsSuccessStatusCode || currentSummoner.Data == null)
                 {
                     Log.Warn("Failed to load summoner id. statusCode={0} responseStatus={1}", currentSummoner.StatusCode, currentSummoner.ResponseStatus);
@@ -55,7 +53,6 @@ namespace Leauge_Auto_Accept
 
         public static bool loadChampionsList()
         {
-            Console.Clear();
 
             Log.Debug("champsSorted.Count={0}", champsSorted?.Count);
             if (!champsSorted.Any())
@@ -63,15 +60,12 @@ namespace Leauge_Auto_Accept
                 Log.Info("Loading available champions list from service");
                 if (!loadSummonerId())
                 {
-                    Console.Clear();
                     return false;
                 }
 
                 List<itemList> champs = new List<itemList>();
 
-                Print.printCentered(Strings.Get("getting_champions_list"), 15);
                 var ownedChampsResp = LCU.clientRequestUntilSuccess<LCUTypes.LolChampionsInventoriesChampionsMinimalV1[]>("GET", $"lol-champions/v1/inventories/{currentSummonerId}/champions-minimal");
-                Console.Clear();
                 if (!ownedChampsResp.IsSuccessStatusCode || ownedChampsResp.Data == null)
                 {
                     Log.Warn("Failed to load champions list. statusCode={0} responseStatus={1}", ownedChampsResp.StatusCode, ownedChampsResp.ResponseStatus);
@@ -91,8 +85,6 @@ namespace Leauge_Auto_Accept
                 champsSorted = champs;
             }
 
-            SizeHandler.resizeBasedOnChampsCount();
-            Console.Clear();
             return true;
         }
     }

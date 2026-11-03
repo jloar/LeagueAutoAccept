@@ -1,97 +1,64 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 using System.Reflection;
-using System.Text;
-using System.Threading;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using RestSharp;
-using System.Text.Json.Nodes;
 
 namespace Leauge_Auto_Accept
 {
     internal class Updater
     {
+        private static readonly NLog.ILogger Log = NLog.LogManager.GetCurrentClassLogger();
+
+        public const string releasesUrl = "https://github.com/sweetriverfish/LeagueAutoAccept/releases/latest";
+
         public static string appVersion;
+
+        // Set once a newer release is found, the window shows it as a banner
+        public static string latestTag;
 
         public static void initialize()
         {
             Version appVersionTmp = Assembly.GetExecutingAssembly().GetName().Version;
             appVersion = appVersionTmp.Major + "." + appVersionTmp.Minor;
-            
-            if (!Debugger.IsAttached)
+
+            if (!Debugger.IsAttached && !Settings.disableUpdateCheck)
             {
-                if (!Settings.disableUpdateCheck)
-                {
-                    versionCheck();
-                }
+                Task.Run(versionCheck);
             }
         }
 
         private static void versionCheck()
         {
-            Console.Clear();
-            Print.printCentered(Strings.Get("checking_for_update"), SizeHandler.HeightCenter);
             var releaseResp = webRequest("https://api.github.com/repos/sweetriverfish/LeagueAutoAccept/releases/latest");
             if (releaseResp == null || releaseResp.IsSuccessStatusCode == false)
             {
-                // Network error
-                Console.Clear();
-                Print.printCentered(Strings.Get("failed_check_update"), SizeHandler.HeightCenter - 1);
-                Print.printCentered(Strings.Get("disable_check_in_settings"));
-                Print.printCentered(Strings.Get("app_launch_shortly"));
-                Thread.Sleep(1500);
+                Log.Warn("Failed to check for an update.");
+                return;
             }
-            else
+
+            try
             {
-                try
+                var tag = (string)JsonNode.Parse(releaseResp.Content)["tag_name"];
+
+                // Only an actual newer release counts, this build can be ahead of the latest release
+                if (Version.TryParse(tag.TrimStart('v'), out Version latest) && latest > Version.Parse(appVersion))
                 {
-                    var latestRelease = JsonNode.Parse(releaseResp.Content);
-
-                    var latestTag = (string)latestRelease["tag_name"];
-
-                    if ('v' + appVersion == latestTag)
-                    {
-                        // Running latest version, no update found/needed
-                        Console.Clear();
-                        Print.printCentered(Strings.Get("no_update_found"), SizeHandler.HeightCenter);
-                        Thread.Sleep(178);
-                        return;
-                    }
-                    else
-                    {
-                        // Running an different version than the latest release, suggest an update
-                        Console.Clear();
-                        Print.printCentered(Strings.Get("update_found"), SizeHandler.HeightCenter - 3);
-                        Print.printCentered(string.Format(Strings.Get("current_latest_version_format"), appVersion, latestTag));
-
-                        Print.printCentered(Strings.Get("latest_version_found_at"), SizeHandler.HeightCenter);
-                        Print.printCentered("github.com/sweetriverfish/LeagueAutoAccept/releases/latest");
-
-                        Print.printCentered(Strings.Get("disable_check_in_settings"), SizeHandler.HeightCenter + 3);
-                        Print.printCentered(Strings.Get("app_launch_5_seconds"));
-
-                        Thread.Sleep(5000);
-                    }
+                    latestTag = tag;
                 }
-                catch
-                {
-                    // Default case, in case github changes the json format or something idk
-                    Console.Clear();
-                    Print.printCentered(Strings.Get("failed_check_update"), SizeHandler.HeightCenter - 1);
-                    Print.printCentered(Strings.Get("disable_check_in_settings"));
-                    Print.printCentered(Strings.Get("app_launch_5_seconds"));
-                    Thread.Sleep(5000);
-                }
+            }
+            catch (Exception ex)
+            {
+                // In case github changes the json format or something idk
+                Log.Warn(ex, "Failed to read the latest release.");
             }
         }
 
         public static RestResponse webRequest(string url)
         {
             RestResponse resp = null;
-            
+
             try
             {
                 using (var client = new RestClient(configureDefaultHeaders: headers => {
@@ -114,7 +81,7 @@ namespace Leauge_Auto_Accept
             {
                 return resp;
             }
-        } 
+        }
 
     }
 
