@@ -5,6 +5,7 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <StartupObject>Leauge_Auto_Accept.Program</StartupObject>
+    <AssemblyName>League Auto Accept</AssemblyName>
     <RootNamespace>Leauge_Auto_Accept</RootNamespace>
     <Version>3.7</Version>
     <Company />

@@ -30,7 +30,16 @@ namespace Leauge_Auto_Accept
                 Log.Error(e.Exception, "Unhandled exception in the window.");
                 e.Handled = true;
             };
-            app.Run(new MainWindow());
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                Log.Fatal(e.ExceptionObject as Exception, "Unhandled exception, the app is closing.");
+                NLog.LogManager.Flush();
+            };
+
+            // The window has to be created inside the app's message loop, otherwise
+            // code awaiting in it can continue on a background thread and crash
+            app.Startup += (sender, e) => new MainWindow().Show();
+            app.Run();
         }
 
         // A task's exception is only seen if something waits on it, and nothing does,
