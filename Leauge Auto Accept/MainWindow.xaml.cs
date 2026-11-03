@@ -268,11 +268,12 @@ namespace Leauge_Auto_Accept
             row.ColumnDefinitions.Add(new ColumnDefinition());
             row.ColumnDefinitions.Add(new ColumnDefinition());
 
-            var first = spellTile("Spell 1", Settings.currentSpell1);
+            // Same order as in game: spell 1 is on D, spell 2 is on F
+            var first = spellTile("Spell 1 (D)", Settings.currentSpell1);
             first.Margin = new Thickness(0, 0, 6, 8);
             row.Children.Add(first);
 
-            var second = spellTile("Spell 2", Settings.currentSpell2);
+            var second = spellTile("Spell 2 (F)", Settings.currentSpell2);
             second.Margin = new Thickness(6, 0, 0, 8);
             Grid.SetColumn(second, 1);
             row.Children.Add(second);
@@ -557,30 +558,72 @@ namespace Leauge_Auto_Accept
                 }
 
                 var rows = new StackPanel();
-                var pages = new[] { ("Unselected", "0") }.Concat(Data.runesList.Select(runes => (runes.name, runes.id)));
-                foreach (var (name, id) in pages)
+                rows.Children.Add(runePageRow(null, slot));
+
+                var mobalytics = Data.runesList.Where(runes => runes.fromMobalytics).ToList();
+                var own = Data.runesList.Where(runes => !runes.fromMobalytics).ToList();
+                if (mobalytics.Any())
                 {
-                    bool selected = slot[1] == id;
-                    var button = new Button
-                    {
-                        Style = style("PlainButton"),
-                        Content = new TextBlock { Text = name, TextTrimming = TextTrimming.CharacterEllipsis },
-                        Margin = new Thickness(0, 0, 0, 8),
-                        BorderBrush = brush(selected ? "Gold" : "Line"),
-                        Foreground = brush(selected ? "Gold" : (id == "0" ? "Muted" : "Text"))
-                    };
-                    AutomationProperties.SetName(button, name);
-                    button.Click += (sender, e) =>
-                    {
-                        Settings.saveSelection(slot, name, id);
-                        showHome();
-                    };
-                    rows.Children.Add(button);
+                    rows.Children.Add(sectionTitle("From Mobalytics"));
+                    mobalytics.ForEach(runes => rows.Children.Add(runePageRow(runes, slot)));
                 }
+                if (own.Any())
+                {
+                    rows.Children.Add(sectionTitle("Your pages"));
+                    own.ForEach(runes => rows.Children.Add(runePageRow(runes, slot)));
+                }
+                rows.Children.Add(message("Mobalytics pages appear here after the Mobalytics app saves them to your League client."));
 
                 page.Children.Add(scrolling(rows));
                 PageHost.Content = page;
             }, showHome, redraws: true);
+        }
+
+        // Shows the keystone and both trees so similar pages can be told apart
+        private Button runePageRow(runePage runes, string[] slot)
+        {
+            string name = runes?.name ?? "Unselected";
+            string id = runes?.id ?? "0";
+            bool selected = slot[1] == id;
+
+            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            words.Children.Add(new TextBlock { Text = name, Foreground = brush(selected ? "Gold" : (runes == null ? "Muted" : "Text")), TextTrimming = TextTrimming.CharacterEllipsis });
+            if (runes != null)
+            {
+                string trees = string.Join(" + ", new[] { runes.primaryStyleName, runes.secondaryStyleName }.Where(tree => !string.IsNullOrEmpty(tree)));
+                string details = string.Join("  ·  ", new[] { runes.keystoneName, trees }.Where(part => !string.IsNullOrEmpty(part)));
+                words.Children.Add(new TextBlock { Text = details, FontSize = 12, Foreground = brush("Muted"), TextTrimming = TextTrimming.CharacterEllipsis });
+            }
+
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(portrait(runes == null ? "–" : "", runes == null ? null : Icons.FromPath(runes.keystoneIconPath), 36, selected ? "Gold" : "Line"));
+            row.Children.Add(words);
+
+            var button = new Button
+            {
+                Style = style("PlainButton"),
+                Content = row,
+                Padding = new Thickness(8),
+                Margin = new Thickness(0, 0, 0, 8),
+                BorderBrush = brush(selected ? "Gold" : "Line")
+            };
+            AutomationProperties.SetName(button, name);
+            button.Click += (sender, e) =>
+            {
+                Settings.saveSelection(slot, name, id);
+                if (runes != null)
+                {
+                    // Make it the active page right away, champ select sets it again for the champion that gets picked
+                    Task.Run(() => Data.setCurrentRunePage(id));
+                }
+                showHome();
+            };
+            return button;
+        }
+
+        private TextBlock sectionTitle(string text)
+        {
+            return new TextBlock { Text = text, FontSize = 13, Foreground = brush("Gold"), Margin = new Thickness(0, 8, 0, 8) };
         }
 
         // ---------- Settings ----------
@@ -633,14 +676,14 @@ namespace Leauge_Auto_Accept
 
                 (string name, string[] desc, int value)[] delays =
                 {
-                    ("Pick hover delay upon phase start", new[] { "Delay after which to hover your pick.", "Default is 10000." }, Settings.pickStartHoverDelay),
-                    ("Pick lock delay upon phase start", new[] { "Delay after which to lock in your pick, after you are able to.", "Default is 999999999." }, Settings.pickStartlockDelay),
-                    ("Pick lock delay before phase end", new[] { "Time to lock in before your time runs out.", "Do not set too low (<300), it will cause you to dodge. Default is 1000." }, Settings.pickEndlockDelay),
-                    ("Ban hover delay upon phase start", new[] { "Delay after which to hover your ban.", "Default is 1500." }, Settings.banStartHoverDelay),
-                    ("Ban lock delay upon phase start", new[] { "Delay after which to lock in your pick, after you are able to.", "Default is 999999999." }, Settings.banStartlockDelay),
-                    ("Ban lock delay before phase end", new[] { "Time to lock in before your time runs out", "Default is 1000." }, Settings.banEndlockDelay),
-                    ("Max queue time before restart", new[] { "How long should the queue be before cancelling and restarting it?", "Default is 300000." }, Settings.queueMaxTime),
-                    ("Chat Messages Delay", new[] { "Delay after which the chat messages will be sent", "Default is 100." }, Settings.chatMessagesDelay),
+                    ("Pick hover delay upon phase start", new[] { "Seconds to wait before hovering your pick.", "Default is 10." }, Settings.pickStartHoverDelay),
+                    ("Pick lock delay upon phase start", new[] { "Seconds to wait before locking in your pick, once you're able to.", "Leave empty to never lock in early. Default is never." }, Settings.pickStartlockDelay),
+                    ("Pick lock delay before phase end", new[] { "Seconds before your time runs out to lock in.", "Below 0.3 can make you dodge. Default is 1." }, Settings.pickEndlockDelay),
+                    ("Ban hover delay upon phase start", new[] { "Seconds to wait before hovering your ban.", "Default is 1.5." }, Settings.banStartHoverDelay),
+                    ("Ban lock delay upon phase start", new[] { "Seconds to wait before locking in your ban, once you're able to.", "Leave empty to never lock in early. Default is never." }, Settings.banStartlockDelay),
+                    ("Ban lock delay before phase end", new[] { "Seconds before your time runs out to lock in.", "Default is 1." }, Settings.banEndlockDelay),
+                    ("Max queue time before restart", new[] { "Seconds to queue before cancelling and restarting it.", "Default is 300 (5 minutes)." }, Settings.queueMaxTime),
+                    ("Chat Messages Delay", new[] { "Seconds to wait before sending your chat messages.", "Default is 0.1." }, Settings.chatMessagesDelay),
                 };
 
                 for (int i = 0; i < delays.Length; i++)
@@ -653,22 +696,34 @@ namespace Leauge_Auto_Accept
             }, showSettings);
         }
 
+        // Delays are kept in milliseconds but shown in seconds, the largest value means never
+        private const int neverDelay = 999999999;
+
+        private static string toSeconds(int milliseconds)
+        {
+            return milliseconds >= neverDelay ? "" : (milliseconds / 1000.0).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         private FrameworkElement delayRow(int item, string name, string[] desc, int value)
         {
-            var input = new TextBox { Text = value.ToString(), Width = 110, TextAlignment = TextAlignment.Right, MaxLength = 9, VerticalAlignment = VerticalAlignment.Center };
+            var input = new TextBox { Text = toSeconds(value), Width = 90, TextAlignment = TextAlignment.Right, MaxLength = 9, VerticalAlignment = VerticalAlignment.Center };
             AutomationProperties.SetName(input, name);
-            input.PreviewTextInput += (sender, e) => e.Handled = !e.Text.All(char.IsDigit);
+            input.PreviewTextInput += (sender, e) => e.Handled = !e.Text.All(c => char.IsDigit(c) || c == '.');
             DataObject.AddPastingHandler(input, (sender, e) => e.CancelCommand());
             Action commit = () =>
             {
-                if (int.TryParse(input.Text, out int parsed))
+                string text = input.Text.Trim();
+                if (text.Length == 0)
                 {
-                    Settings.setDelay(item, parsed);
+                    value = neverDelay;
+                    Settings.setDelay(item, value);
                 }
-                else
+                else if (double.TryParse(text, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out double seconds))
                 {
-                    input.Text = value.ToString();
+                    value = (int)Math.Min(Math.Round(seconds * 1000), neverDelay);
+                    Settings.setDelay(item, value);
                 }
+                input.Text = toSeconds(value);
             };
             input.LostFocus += (sender, e) => commit();
             input.KeyDown += (sender, e) =>
@@ -678,7 +733,11 @@ namespace Leauge_Auto_Accept
                     commit();
                 }
             };
-            return settingRow(name, desc, input);
+
+            var field = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            field.Children.Add(input);
+            field.Children.Add(new TextBlock { Text = "sec", Foreground = brush("Muted"), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            return settingRow(name, desc, field);
         }
 
         // ---------- Arena ----------

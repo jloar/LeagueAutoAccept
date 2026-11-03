@@ -22,12 +22,25 @@ namespace Leauge_Auto_Accept
         public List<string> gameModes { get; set; } = new();
     }
 
+    public class runePage
+    {
+        public string name { get; set; }
+        public string id { get; set; }
+        public string keystoneName { get; set; }
+        public string keystoneIconPath { get; set; }
+        public string primaryStyleName { get; set; }
+        public string secondaryStyleName { get; set; }
+
+        // The Mobalytics desktop app saves its pages into the client with this prefix
+        public bool fromMobalytics => name.StartsWith("Moba:");
+    }
+
     internal class Data
     {
         private static readonly NLog.ILogger Log = NLog.LogManager.GetCurrentClassLogger();
 
         public static List<itemList> champsSorted = new List<itemList>();
-        public static List<itemList> runesList = new List<itemList>();
+        public static List<runePage> runesList = new List<runePage>();
         public static List<spellList> spellsSorted = new List<spellList>();
 
         public static long currentSummonerId = 0;
@@ -113,9 +126,28 @@ namespace Leauge_Auto_Accept
 
             runesList = runesResp.Data
                 .Where(x => x.IsValid == true)
-                .Select(x => new itemList() { name = (string)x.Name, id = x.Id.ToStringInvariant(), free = true })
+                .Select(x => new runePage()
+                {
+                    name = x.Name,
+                    id = x.Id.ToStringInvariant(),
+                    keystoneName = x.PageKeystone?.Name,
+                    keystoneIconPath = x.PageKeystone?.IconPath,
+                    primaryStyleName = x.PrimaryStyleName,
+                    secondaryStyleName = x.SecondaryStyleName
+                })
                 .ToList();
             return true;
+        }
+
+        // Makes a rune page the active one in the client, outside of champ select too
+        public static bool setCurrentRunePage(string id)
+        {
+            var resp = LCU.clientRequest("PUT", "lol-perks/v1/currentpage", id);
+            if (!resp.IsSuccessStatusCode)
+            {
+                Log.Warn("Failed to set the current rune page. statusCode={0}", resp.StatusCode);
+            }
+            return resp.IsSuccessStatusCode;
         }
 
         public static bool loadSpellsList()

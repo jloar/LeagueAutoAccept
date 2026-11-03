@@ -23,12 +23,18 @@ namespace Leauge_Auto_Accept
 
         public static Task<ImageSource> Spell(spellList spell)
         {
-            if (string.IsNullOrEmpty(spell.iconPath))
+            return FromPath(spell.iconPath);
+        }
+
+        // For icon paths the client gives out, such as a rune page's keystone
+        public static Task<ImageSource> FromPath(string iconPath)
+        {
+            if (string.IsNullOrEmpty(iconPath))
             {
                 return Task.FromResult<ImageSource>(null);
             }
 
-            return Get(spell.iconPath.TrimStart('/'));
+            return Get(iconPath.TrimStart('/'));
         }
 
         private static Task<ImageSource> Get(string path)

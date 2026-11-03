@@ -36,6 +36,9 @@ namespace Leauge_Auto_Accept
         private static long queueStartTime;
         private static string lastPhase = "";
 
+        // Longer than the gap between two champ select checks, including the request time
+        private const int lockCheckMargin = 1500;
+
         public static void acceptQueue()
         {
             while (true)
@@ -450,32 +453,32 @@ namespace Leauge_Auto_Accept
                 {
                     int primaryChampId = ParseId(usePrimaryChamp ? Settings.currentChamp[1] : Settings.secondaryChamp[1]);
                     int backupChampId = ParseId(usePrimaryChamp ? Settings.currentBackupChamp[1] : Settings.secondaryBackupChamp[1]);
-                    int primaryRunesId = ParseId(usePrimaryChamp ? Settings.currentChampRunes[1] : Settings.secondaryChampRunes[1]);
-                    int backupRunesId = ParseId(usePrimaryChamp ? Settings.currentBackupChampRunes[1] : Settings.secondaryBackupChampRunes[1]);
+                    string[] primaryRunes = usePrimaryChamp ? Settings.currentChampRunes : Settings.secondaryChampRunes;
+                    string[] backupRunes = usePrimaryChamp ? Settings.currentBackupChampRunes : Settings.secondaryBackupChampRunes;
 
                     if (primaryChampId == 0 && !usePrimaryChamp)
                     {
                         primaryChampId = ParseId(Settings.currentChamp[1]);
-                        primaryRunesId = ParseId(Settings.currentChampRunes[1]);
+                        primaryRunes = Settings.currentChampRunes;
                     }
                     if (backupChampId == 0 && !usePrimaryChamp)
                     {
                         backupChampId = ParseId(Settings.currentBackupChamp[1]);
-                        backupRunesId = ParseId(Settings.currentBackupChampRunes[1]);
+                        backupRunes = Settings.currentBackupChampRunes;
                     }
 
                     // Try first choice based on player is assigned primary or secondary role
                     if (primaryChampId > 0)
                     {
                         hoverChampion(actId, primaryChampId, "pick");
-                        if (pickedChamp) handleRunes(primaryRunesId);
+                        if (pickedChamp) handleRunes(primaryRunes);
                     }
 
                     // If first choice didn't work (pickedChamp is still false), try second choice
                     if (!pickedChamp && backupChampId > 0)
                     {
                         hoverChampion(actId, backupChampId, "pick");
-                        if (pickedChamp) handleRunes(backupRunesId);
+                        if (pickedChamp) handleRunes(backupRunes);
                         if (pickedChamp) championId = backupChampId;
                     }
                     else
@@ -610,15 +613,31 @@ namespace Leauge_Auto_Accept
             }
         }
 
-        private static void handleRunes(int runesId)
+        private static void handleRunes(string[] runes)
         {
-            if (!Settings.useRunePages || runesId <= 0)
+            if (!Settings.useRunePages || ParseId(runes[1]) <= 0)
             {
                 return;
             }
 
+            // Apps like Mobalytics replace their pages, which gives them a new id, so fall back to the page's name
+            string runesId = runes[1];
+            if (Data.loadRunesList() && !Data.runesList.Any(page => page.id == runesId))
+            {
+                var sameName = Data.runesList.FirstOrDefault(page => page.name == runes[0]);
+                if (sameName == null)
+                {
+                    Log.Warn("Rune page '{0}' ({1}) no longer exists in the client.", runes[0], runesId);
+                    return;
+                }
+
+                Log.Info("Rune page '{0}' now has id {1}, was {2}.", runes[0], sameName.id, runesId);
+                runesId = sameName.id;
+                Settings.saveSelection(runes, runes[0], runesId);
+            }
+
             Log.Info("handleRunes: runesId={0}", runesId);
-            LCU.clientRequest("PUT", "lol-perks/v1/currentpage", $"{runesId}");
+            LCU.clientRequest("PUT", "lol-perks/v1/currentpage", runesId);
         }
 
         private static void handleSummonerSpells(string gameMode)
@@ -684,7 +703,8 @@ namespace Leauge_Auto_Accept
             int startDelay = actType == "pick" ? Settings.pickStartlockDelay : Settings.banStartlockDelay;
             int endDelay = actType == "pick" ? Settings.pickEndlockDelay : Settings.banEndlockDelay;
 
-            if (remaining <= endDelay || elapsed >= startDelay)
+            // Champ select is only checked about once a second, so lock in that much early or the last second can be missed
+            if (remaining <= endDelay + lockCheckMargin || elapsed >= startDelay)
             {
                 lockChampion(actId, championId, actType);
             }
