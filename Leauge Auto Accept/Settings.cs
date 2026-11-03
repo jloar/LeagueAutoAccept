@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -209,6 +209,17 @@ namespace Leauge_Auto_Accept
             }
         }
 
+        // Values are separated by commas, so commas inside names, such as rune page names, are escaped
+        private static string escapeValue(string value)
+        {
+            return value.Replace("%", "%25").Replace(",", "%2C");
+        }
+
+        private static string unescapeValue(string value)
+        {
+            return value.Replace("%2C", ",").Replace("%25", "%");
+        }
+
         private static string encodeMessagesIntoBase64()
         {
             byte[] byteArray = Encoding.UTF8.GetBytes(string.Join('|', chatMessages));
@@ -256,13 +267,13 @@ namespace Leauge_Auto_Accept
                 ",secondaryBanId:" + secondaryBan[1] +
                 ",secondaryBackupBanName:" + secondaryBackupBan[0] +
                 ",secondaryBackupBanId:" + secondaryBackupBan[1] +
-                ",champRuneName:" + currentChampRunes[0] +
+                ",champRuneName:" + escapeValue(currentChampRunes[0]) +
                 ",champRuneId:" + currentChampRunes[1] +
-                ",champBackupRuneName:" + currentBackupChampRunes[0] +
+                ",champBackupRuneName:" + escapeValue(currentBackupChampRunes[0]) +
                 ",champBackupRuneId:" + currentBackupChampRunes[1] +
-                ",secondaryChampRuneName:" + secondaryChampRunes[0] +
+                ",secondaryChampRuneName:" + escapeValue(secondaryChampRunes[0]) +
                 ",secondaryChampRuneId:" + secondaryChampRunes[1] +
-                ",secondaryBackupChampRuneName:" + secondaryBackupChampRunes[0] +
+                ",secondaryBackupChampRuneName:" + escapeValue(secondaryBackupChampRunes[0]) +
                 ",secondaryBackupChampRuneId:" + secondaryBackupChampRunes[1] +
                 ",spell1Name:" + currentSpell1[0] +
                 ",spell1Id:" + currentSpell1[1] +
@@ -339,7 +350,13 @@ namespace Leauge_Auto_Accept
                 string[] commas = text.Split(',');
                 foreach (var comma in commas)
                 {
-                    string[] columns = comma.Split(':');
+                    // Only the first colon separates the key, names such as Mobalytics' rune pages contain colons too
+                    string[] columns = comma.Split(':', 2);
+                    if (columns.Length < 2)
+                    {
+                        continue;
+                    }
+                    columns[1] = unescapeValue(columns[1]);
                     switch (columns[0])
                     {
                         case "champName":
