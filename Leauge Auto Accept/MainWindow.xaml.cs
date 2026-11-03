@@ -29,10 +29,15 @@ namespace Leauge_Auto_Accept
         private bool redrawOnData;
         private bool lastConnected;
         private bool lastChampsLoaded;
+        private bool lastSpellsLoaded;
+        private static bool spellsLoading;
 
         public MainWindow()
         {
             InitializeComponent();
+
+            // Tall enough to show every page without scrolling, unless the screen is smaller than that
+            Height = Math.Min(Height, SystemParameters.WorkArea.Height);
 
             var statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             statusTimer.Tick += (sender, e) => updateStatus();
@@ -100,12 +105,45 @@ namespace Leauge_Auto_Accept
                 Banner.Visibility = Visibility.Collapsed;
             }
 
-            if (redrawOnData && (connected != lastConnected || champsLoaded != lastChampsLoaded))
+            bool spellsLoaded = Data.spellsSorted.Count > 0;
+            if (connected && Settings.useSummonerSpells && !spellsLoaded)
+            {
+                loadSpellsInBackground();
+            }
+
+            if (redrawOnData && (connected != lastConnected || champsLoaded != lastChampsLoaded || spellsLoaded != lastSpellsLoaded))
             {
                 renderPage?.Invoke();
             }
             lastConnected = connected;
             lastChampsLoaded = champsLoaded;
+            lastSpellsLoaded = spellsLoaded;
+        }
+
+        // The spell list is small, so it's fetched once the client connects and the spells are switched on
+        private static void loadSpellsInBackground()
+        {
+            if (spellsLoading)
+            {
+                return;
+            }
+
+            spellsLoading = true;
+            Task.Run(() =>
+            {
+                try
+                {
+                    Data.loadSpellsList();
+                }
+                catch (Exception ex)
+                {
+                    NLog.LogManager.GetCurrentClassLogger().Warn(ex, "Failed to load summoner spells.");
+                }
+                finally
+                {
+                    spellsLoading = false;
+                }
+            });
         }
 
         private void applyLabels()
@@ -141,42 +179,62 @@ namespace Leauge_Auto_Accept
 
                 var primary = roleCard("Primary role", new[]
                 {
-                    ("Pick", "Primary Champion", Settings.currentChamp, false),
-                    ("Backup pick", "Primary Backup Champion", Settings.currentBackupChamp, false),
-                    ("Ban", "Primary Ban", Settings.currentBan, true),
-                    ("Backup ban", "Primary Backup Ban", Settings.currentBackupBan, true),
+                    ("Pick", "Primary Champion", Settings.currentChamp, false, Settings.currentChampRunes),
+                    ("Backup pick", "Primary Backup Champion", Settings.currentBackupChamp, false, Settings.currentBackupChampRunes),
+                    ("Ban", "Primary Ban", Settings.currentBan, true, null),
+                    ("Backup ban", "Primary Backup Ban", Settings.currentBackupBan, true, null),
                 });
                 primary.Margin = new Thickness(0, 0, 6, 0);
                 grid.Children.Add(primary);
 
                 var secondary = roleCard("Secondary role", new[]
                 {
-                    ("Pick", "Secondary Champion", Settings.secondaryChamp, false),
-                    ("Backup pick", "Secondary Backup Champion", Settings.secondaryBackupChamp, false),
-                    ("Ban", "Secondary Ban", Settings.secondaryBan, true),
-                    ("Backup ban", "Secondary Backup Ban", Settings.secondaryBackupBan, true),
+                    ("Pick", "Secondary Champion", Settings.secondaryChamp, false, Settings.secondaryChampRunes),
+                    ("Backup pick", "Secondary Backup Champion", Settings.secondaryBackupChamp, false, Settings.secondaryBackupChampRunes),
+                    ("Ban", "Secondary Ban", Settings.secondaryBan, true, null),
+                    ("Backup ban", "Secondary Backup Ban", Settings.secondaryBackupBan, true, null),
                 });
                 secondary.Margin = new Thickness(6, 0, 0, 0);
                 Grid.SetColumn(secondary, 1);
                 grid.Children.Add(secondary);
 
-                PageHost.Content = grid;
+                var home = new StackPanel();
+                home.Children.Add(grid);
+                if (Settings.useSummonerSpells)
+                {
+                    var spells = spellsCard();
+                    spells.Margin = new Thickness(0, 12, 0, 0);
+                    home.Children.Add(spells);
+                }
+
+                PageHost.Content = scrolling(home);
             }, null, redraws: true);
         }
 
-        private FrameworkElement roleCard(string title, (string label, string pickerTitle, string[] slot, bool isBan)[] tiles)
+        private FrameworkElement roleCard(string title, (string label, string pickerTitle, string[] slot, bool isBan, string[] runes)[] tiles)
         {
             var body = new StackPanel();
             body.Children.Add(new TextBlock { Text = title, FontSize = 13, Foreground = brush("Muted"), Margin = new Thickness(0, 0, 0, 10) });
 
             foreach (var tile in tiles)
             {
+                bool showRunes = tile.runes != null && Settings.useRunePages;
                 var slotTile = champTile(tile.label, tile.slot, tile.isBan ? "Bad" : "Gold", () =>
                     showPicker(tile.pickerTitle, tile.slot, tile.isBan, showHome));
-                slotTile.Margin = new Thickness(0, 0, 0, 8);
+                slotTile.Margin = new Thickness(0, 0, 0, showRunes ? 4 : 8);
                 body.Children.Add(slotTile);
+
+                if (showRunes)
+                {
+                    body.Children.Add(runeRow(tile.label, tile.pickerTitle, tile.runes));
+                }
             }
 
+            return card(body);
+        }
+
+        private Border card(FrameworkElement body)
+        {
             return new Border
             {
                 BorderBrush = brush("Line"),
@@ -187,32 +245,81 @@ namespace Leauge_Auto_Accept
             };
         }
 
+        private FrameworkElement runeRow(string label, string pickerTitle, string[] runes)
+        {
+            bool isSet = runes[1] != "0";
+
+            var name = new TextBlock { Text = "Rune page", FontSize = 12, Foreground = brush("Muted"), Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+            var value = new TextBlock { Text = isSet ? runes[0] : "Choose", Foreground = brush(isSet ? "Gold" : "Dim"), TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+            var dock = new DockPanel();
+            DockPanel.SetDock(name, Dock.Left);
+            dock.Children.Add(name);
+            dock.Children.Add(value);
+
+            var button = new Button { Style = style("PlainButton"), Content = dock, Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(24, 0, 0, 8) };
+            AutomationProperties.SetName(button, label + " rune page: " + value.Text);
+            button.Click += (sender, e) => showRunePicker(pickerTitle + " Rune Page", runes);
+            return button;
+        }
+
+        private FrameworkElement spellsCard()
+        {
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+
+            var first = spellTile("Spell 1", Settings.currentSpell1);
+            first.Margin = new Thickness(0, 0, 6, 8);
+            row.Children.Add(first);
+
+            var second = spellTile("Spell 2", Settings.currentSpell2);
+            second.Margin = new Thickness(6, 0, 0, 8);
+            Grid.SetColumn(second, 1);
+            row.Children.Add(second);
+
+            var body = new StackPanel();
+            body.Children.Add(new TextBlock { Text = "Summoner spells", FontSize = 13, Foreground = brush("Muted"), Margin = new Thickness(0, 0, 0, 10) });
+            body.Children.Add(row);
+            return card(body);
+        }
+
+        private Button spellTile(string label, string[] slot)
+        {
+            bool isSet = slot[1] != "0";
+            var spell = Data.spellsSorted.FirstOrDefault(s => s.name == slot[0]);
+            return slotTile(label, isSet ? slot[0] : "Choose", isSet, isSet ? slot[0].Substring(0, 1) : "+",
+                spell != null ? Icons.Spell(spell) : null, "Accent", () => showSpellPicker(label, slot));
+        }
+
         private Button champTile(string label, string[] slot, string accent, Action onClick)
         {
             bool isSet = slot[1] != "0";
-            string name = !isSet ? "Choose" : slot[0];
+            bool isChampion = int.TryParse(slot[1], out int id) && id > 0;
+            return slotTile(label, isSet ? slot[0] : "Choose", isSet, isChampion ? slot[0].Substring(0, 1) : "+",
+                isChampion ? Icons.Champion(slot[1]) : null, accent, onClick);
+        }
 
-            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
-            text.Children.Add(new TextBlock { Text = label, FontSize = 12, Foreground = brush("Muted") });
-            text.Children.Add(new TextBlock { Text = name, FontSize = 15, Foreground = brush(isSet ? "Text" : "Dim") });
+        private Button slotTile(string label, string text, bool isSet, string letter, Task<ImageSource> icon, string accent, Action onClick)
+        {
+            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            words.Children.Add(new TextBlock { Text = label, FontSize = 12, Foreground = brush("Muted") });
+            words.Children.Add(new TextBlock { Text = text, FontSize = 15, Foreground = brush(isSet ? "Text" : "Dim") });
 
             var row = new StackPanel { Orientation = Orientation.Horizontal };
-            row.Children.Add(portrait(slot[0], slot[1], 44, isSet ? accent : "Line"));
-            row.Children.Add(text);
+            row.Children.Add(portrait(letter, icon, 44, isSet ? accent : "Line"));
+            row.Children.Add(words);
 
             var button = new Button { Style = style("PlainButton"), Content = row, Padding = new Thickness(8) };
-            AutomationProperties.SetName(button, label + ": " + name);
+            AutomationProperties.SetName(button, label + ": " + text);
             button.Click += (sender, e) => onClick();
             return button;
         }
 
-        private FrameworkElement portrait(string name, string id, double size, string accent)
+        private FrameworkElement portrait(string letterText, Task<ImageSource> icon, double size, string accent)
         {
-            bool isChampion = int.TryParse(id, out int champId) && champId > 0;
-
             var letter = new TextBlock
             {
-                Text = !isChampion ? "+" : name.Substring(0, 1),
+                Text = letterText,
                 FontSize = size * 0.4,
                 Foreground = brush(accent),
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -223,9 +330,9 @@ namespace Leauge_Auto_Accept
             content.Children.Add(letter);
             content.Children.Add(image);
 
-            if (isChampion)
+            if (icon != null)
             {
-                loadPortrait(image, letter, id);
+                loadPortrait(image, letter, icon);
             }
 
             return new Border
@@ -240,9 +347,9 @@ namespace Leauge_Auto_Accept
             };
         }
 
-        private static async void loadPortrait(Image image, TextBlock letter, string id)
+        private static async void loadPortrait(Image image, TextBlock letter, Task<ImageSource> icon)
         {
-            var source = await ChampionIcons.Get(id);
+            var source = await icon;
             if (source != null)
             {
                 image.Source = source;
@@ -267,7 +374,7 @@ namespace Leauge_Auto_Accept
                     else
                     {
                         page.Children.Add(message("Getting champions and ownership list..."));
-                        loadChampionsThenDraw(page);
+                        loadThenDraw(page, Data.loadChampionsList, "Failed to load champions from League.");
                     }
                     PageHost.Content = page;
                     return;
@@ -289,10 +396,12 @@ namespace Leauge_Auto_Accept
                 var tiles = new List<(string search, Button button)>();
                 foreach (var option in options)
                 {
-                    var tile = pickerTile(option.name, option.id, slot[1] == option.id);
+                    bool isChampion = int.Parse(option.id) > 0;
+                    var tile = pickerTile(option.name, isChampion ? option.name.Substring(0, 1) : "+",
+                        isChampion ? Icons.Champion(option.id) : null, slot[1] == option.id);
                     tile.Click += (sender, e) =>
                     {
-                        Settings.saveSelectedChamp(slot, option.name, option.id);
+                        Settings.saveSelection(slot, option.name, option.id);
                         back();
                     };
                     grid.Children.Add(tile);
@@ -326,16 +435,16 @@ namespace Leauge_Auto_Accept
             }, back, redraws: true);
         }
 
-        private async void loadChampionsThenDraw(Panel body)
+        private async void loadThenDraw(Panel body, Func<bool> load, string failure)
         {
             bool loaded = false;
             try
             {
-                loaded = await Task.Run(Data.loadChampionsList);
+                loaded = await Task.Run(load);
             }
             catch (Exception ex)
             {
-                NLog.LogManager.GetCurrentClassLogger().Error(ex, "Failed to load champions.");
+                NLog.LogManager.GetCurrentClassLogger().Error(ex, failure);
             }
 
             if (loaded)
@@ -345,16 +454,16 @@ namespace Leauge_Auto_Accept
             else if (body.IsLoaded)
             {
                 body.Children.RemoveAt(body.Children.Count - 1);
-                body.Children.Add(message("Failed to load champions from League."));
+                body.Children.Add(message(failure));
             }
         }
 
-        private Button pickerTile(string name, string id, bool selected)
+        private Button pickerTile(string name, string letter, Task<ImageSource> icon, bool selected)
         {
             var column = new StackPanel { Width = 76 };
-            var icon = portrait(name, id, 52, selected ? "Gold" : "Line");
-            icon.HorizontalAlignment = HorizontalAlignment.Center;
-            column.Children.Add(icon);
+            var image = portrait(letter, icon, 52, selected ? "Gold" : "Line");
+            image.HorizontalAlignment = HorizontalAlignment.Center;
+            column.Children.Add(image);
             column.Children.Add(new TextBlock
             {
                 Text = name,
@@ -377,6 +486,103 @@ namespace Leauge_Auto_Accept
             return button;
         }
 
+        // ---------- Summoner spell and rune page pickers ----------
+
+        private void showSpellPicker(string title, string[] slot)
+        {
+            show(() =>
+            {
+                var page = pageFrame(title, showHome);
+
+                if (!Data.spellsSorted.Any())
+                {
+                    if (!LCU.isLeagueOpen || !LCU.isAuthReady)
+                    {
+                        page.Children.Add(message("Open the League client to choose a summoner spell."));
+                    }
+                    else
+                    {
+                        page.Children.Add(message("Getting a list of summoner spells..."));
+                        loadThenDraw(page, Data.loadSpellsList, "Failed to load summoner spells from League.");
+                    }
+                    PageHost.Content = page;
+                    return;
+                }
+
+                // Some game modes have their own copy of a spell, one entry per name is enough here
+                var grid = new WrapPanel();
+                grid.Children.Add(spellOption("Unselected", "0", null, slot));
+                foreach (var spell in Data.spellsSorted.GroupBy(s => s.name).Select(g => g.First()).OrderBy(s => s.name))
+                {
+                    grid.Children.Add(spellOption(spell.name, spell.id, spell, slot));
+                }
+
+                page.Children.Add(scrolling(grid));
+                PageHost.Content = page;
+            }, showHome, redraws: true);
+        }
+
+        private Button spellOption(string name, string id, spellList spell, string[] slot)
+        {
+            bool selected = spell == null ? slot[1] == "0" : slot[1] != "0" && slot[0] == name;
+            var tile = pickerTile(name, spell == null ? "+" : name.Substring(0, 1), spell == null ? null : Icons.Spell(spell), selected);
+            tile.Click += (sender, e) =>
+            {
+                Settings.saveSelection(slot, name, id);
+                showHome();
+            };
+            return tile;
+        }
+
+        private void showRunePicker(string title, string[] slot)
+        {
+            bool loaded = false;
+            show(() =>
+            {
+                var page = pageFrame(title, showHome);
+
+                if (!LCU.isLeagueOpen || !LCU.isAuthReady)
+                {
+                    page.Children.Add(message("Open the League client to choose a rune page."));
+                    PageHost.Content = page;
+                    return;
+                }
+
+                if (!loaded)
+                {
+                    page.Children.Add(message("Getting your rune pages..."));
+                    PageHost.Content = page;
+                    loadThenDraw(page, () => loaded = Data.loadRunesList(), "Failed to load your rune pages from League.");
+                    return;
+                }
+
+                var rows = new StackPanel();
+                var pages = new[] { ("Unselected", "0") }.Concat(Data.runesList.Select(runes => (runes.name, runes.id)));
+                foreach (var (name, id) in pages)
+                {
+                    bool selected = slot[1] == id;
+                    var button = new Button
+                    {
+                        Style = style("PlainButton"),
+                        Content = new TextBlock { Text = name, TextTrimming = TextTrimming.CharacterEllipsis },
+                        Margin = new Thickness(0, 0, 0, 8),
+                        BorderBrush = brush(selected ? "Gold" : "Line"),
+                        Foreground = brush(selected ? "Gold" : (id == "0" ? "Muted" : "Text"))
+                    };
+                    AutomationProperties.SetName(button, name);
+                    button.Click += (sender, e) =>
+                    {
+                        Settings.saveSelection(slot, name, id);
+                        showHome();
+                    };
+                    rows.Children.Add(button);
+                }
+
+                page.Children.Add(scrolling(rows));
+                PageHost.Content = page;
+            }, showHome, redraws: true);
+        }
+
         // ---------- Settings ----------
 
         private void showSettings()
@@ -397,6 +603,8 @@ namespace Leauge_Auto_Accept
                     ("Instantly hover pick", new[] { "Instantly hover champion as soon as joining champ select.", "In draft pick, it will hover before you are normally able to." }, Settings.instantHover),
                     ("Automatically restart queue", new[] { "Automatically restart queue every few minutes.", "Default is 5 minutes, can be configured in the delays settings." }, Settings.autoRestartQueue),
                     ("Cancel queue after dodge", new[] { "Automatically cancel the queue after someone dodges the lobby." }, Settings.cancelQueueAfterDodge),
+                    ("Rune pages", new[] { "Choose a rune page for each champion pick and set it in champ select.", "Leave this off if another app, such as Mobalytics, sets your runes." }, Settings.useRunePages),
+                    ("Summoner spells", new[] { "Choose two summoner spells and set them in champ select.", "Leave this off if another app sets your spells." }, Settings.useSummonerSpells),
                 };
 
                 for (int i = 0; i < toggles.Length; i++)

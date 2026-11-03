@@ -1,5 +1,6 @@
 ﻿using RestSharp;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
@@ -18,6 +19,7 @@ namespace Leauge_Auto_Accept
         private static bool lockedChamp = false;
         private static bool pickedBan = false;
         private static bool lockedBan = false;
+        private static bool pickedSpells = false;
         private static bool sentChatMessages = false;
 
         // Arena
@@ -66,7 +68,8 @@ namespace Leauge_Auto_Accept
                                 handleMatchmakingAccept();
                                 break;
                             case "ChampSelect":
-                                handleChampSelect();
+                                var gameMode = gameSessionResp.Data.GameData?.Queue?.GameMode ?? "";
+                                handleChampSelect(gameMode);
                                 handlePickOrderSwap();
                                 break;
                             case "InProgress":
@@ -164,7 +167,7 @@ namespace Leauge_Auto_Accept
         }
 
 
-        private static void handleChampSelect()
+        private static void handleChampSelect(string gameMode)
         {
             // Get data for the current ongoing champ select
             var currentChampSelect = LCU.clientRequest<LCUTypes.LolChampSelectSessionV1>("GET", "lol-champ-select/v1/session");
@@ -182,6 +185,7 @@ namespace Leauge_Auto_Accept
                     lockedChamp = false;
                     pickedBan = false;
                     lockedBan = false;
+                    pickedSpells = false;
                     sentChatMessages = false;
                     champSelectStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
@@ -194,8 +198,8 @@ namespace Leauge_Auto_Accept
                 }
                 lastChatRoom = currentChatRoom;
 
-                Log.Debug("pickedChamp={0} lockedChamp={1} pickedBan={2} lockedBan={3} sentChatMessages={4}", pickedChamp, lockedChamp, pickedBan, lockedBan, sentChatMessages);
-                if (pickedChamp && lockedChamp && pickedBan && lockedBan && sentChatMessages)
+                Log.Debug("pickedChamp={0} lockedChamp={1} pickedBan={2} lockedBan={3} sentChatMessages={4} pickedSpells={5}", pickedChamp, lockedChamp, pickedBan, lockedBan, sentChatMessages, pickedSpells);
+                if (pickedChamp && lockedChamp && pickedBan && lockedBan && sentChatMessages && pickedSpells)
                 {
                     // Sleep a little if we already did everything we needed to do
                     Log.Debug("Sleep 1000");
@@ -258,6 +262,10 @@ namespace Leauge_Auto_Accept
                     if (!sentChatMessages)
                     {
                         handleChampSelectChat(currentChatRoom);
+                    }
+                    if (!pickedSpells)
+                    {
+                        handleSummonerSpells(gameMode);
                     }
                 }
             }
@@ -442,26 +450,32 @@ namespace Leauge_Auto_Accept
                 {
                     int primaryChampId = ParseId(usePrimaryChamp ? Settings.currentChamp[1] : Settings.secondaryChamp[1]);
                     int backupChampId = ParseId(usePrimaryChamp ? Settings.currentBackupChamp[1] : Settings.secondaryBackupChamp[1]);
+                    int primaryRunesId = ParseId(usePrimaryChamp ? Settings.currentChampRunes[1] : Settings.secondaryChampRunes[1]);
+                    int backupRunesId = ParseId(usePrimaryChamp ? Settings.currentBackupChampRunes[1] : Settings.secondaryBackupChampRunes[1]);
 
                     if (primaryChampId == 0 && !usePrimaryChamp)
                     {
                         primaryChampId = ParseId(Settings.currentChamp[1]);
+                        primaryRunesId = ParseId(Settings.currentChampRunes[1]);
                     }
                     if (backupChampId == 0 && !usePrimaryChamp)
                     {
                         backupChampId = ParseId(Settings.currentBackupChamp[1]);
+                        backupRunesId = ParseId(Settings.currentBackupChampRunes[1]);
                     }
 
                     // Try first choice based on player is assigned primary or secondary role
                     if (primaryChampId > 0)
                     {
                         hoverChampion(actId, primaryChampId, "pick");
+                        if (pickedChamp) handleRunes(primaryRunesId);
                     }
 
                     // If first choice didn't work (pickedChamp is still false), try second choice
                     if (!pickedChamp && backupChampId > 0)
                     {
                         hoverChampion(actId, backupChampId, "pick");
+                        if (pickedChamp) handleRunes(backupRunesId);
                         if (pickedChamp) championId = backupChampId;
                     }
                     else
@@ -594,6 +608,54 @@ namespace Leauge_Auto_Accept
                     pickedBan = true;
                 }
             }
+        }
+
+        private static void handleRunes(int runesId)
+        {
+            if (!Settings.useRunePages || runesId <= 0)
+            {
+                return;
+            }
+
+            Log.Info("handleRunes: runesId={0}", runesId);
+            LCU.clientRequest("PUT", "lol-perks/v1/currentpage", $"{runesId}");
+        }
+
+        private static void handleSummonerSpells(string gameMode)
+        {
+            // Arena has no summoner spells to choose
+            if (!Settings.useSummonerSpells || isArena)
+            {
+                pickedSpells = true;
+                return;
+            }
+
+            if (!Data.loadSpellsList())
+            {
+                return;
+            }
+
+            bool allSet = true;
+            foreach (var (slot, field) in new[] { (Settings.currentSpell1, "spell1Id"), (Settings.currentSpell2, "spell2Id") })
+            {
+                ulong? spellId = findSpellId(slot[0], gameMode);
+                if (spellId == null)
+                {
+                    // Unselected, or not available in this game mode
+                    continue;
+                }
+
+                var resp = LCU.clientRequest("PATCH", "lol-champ-select/v1/session/my-selection", new Dictionary<string, ulong> { [field] = spellId.Value });
+                allSet &= resp.IsSuccessStatusCode;
+            }
+            pickedSpells = allSet;
+        }
+
+        // Spells are saved by name, since some game modes use their own copy of a spell with a different id
+        internal static ulong? findSpellId(string name, string gameMode)
+        {
+            var spell = Data.spellsSorted.FirstOrDefault(s => s.name == name && s.gameModes.Contains(gameMode));
+            return spell != null && ulong.TryParse(spell.id, out ulong id) ? id : null;
         }
 
         private static void lockChampion(int actId, int championId, string actType)

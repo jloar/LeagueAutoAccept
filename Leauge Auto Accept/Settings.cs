@@ -15,6 +15,12 @@ namespace Leauge_Auto_Accept
         public static string[] currentBackupBan = { "Unselected", "0" };
         public static string[] secondaryBan = { "Unselected", "0" };
         public static string[] secondaryBackupBan = { "Unselected", "0" };
+        public static string[] currentChampRunes = { "Unselected", "0" };
+        public static string[] currentBackupChampRunes = { "Unselected", "0" };
+        public static string[] secondaryChampRunes = { "Unselected", "0" };
+        public static string[] secondaryBackupChampRunes = { "Unselected", "0" };
+        public static string[] currentSpell1 = { "Unselected", "0" };
+        public static string[] currentSpell2 = { "Unselected", "0" };
         public static bool bravery = false;
         public static bool banCrowdFavourite = false;
         public static string[] crowdFavouraiteChamp1 = { "Unselected", "0" };
@@ -34,6 +40,8 @@ namespace Leauge_Auto_Accept
         public static bool shouldAutoAcceptbeOn = false;
         public static bool autoRestartQueue = false;
         public static bool cancelQueueAfterDodge = false;
+        public static bool useRunePages = false;
+        public static bool useSummonerSpells = false;
 
         public static int pickStartHoverDelay = 10000;
         public static int pickStartlockDelay = 999999999;
@@ -91,6 +99,12 @@ namespace Leauge_Auto_Accept
                 case 8:
                     cancelQueueAfterDodge = !cancelQueueAfterDodge;
                     break;
+                case 9:
+                    useRunePages = !useRunePages;
+                    break;
+                case 10:
+                    useSummonerSpells = !useSummonerSpells;
+                    break;
             }
 
             if (saveSettings)
@@ -141,7 +155,7 @@ namespace Leauge_Auto_Accept
             }
         }
 
-        public static void saveSelectedChamp(string[] slot, string name, string id)
+        public static void saveSelection(string[] slot, string name, string id)
         {
             slot[0] = name;
             slot[1] = id;
@@ -242,6 +256,20 @@ namespace Leauge_Auto_Accept
                 ",secondaryBanId:" + secondaryBan[1] +
                 ",secondaryBackupBanName:" + secondaryBackupBan[0] +
                 ",secondaryBackupBanId:" + secondaryBackupBan[1] +
+                ",champRuneName:" + currentChampRunes[0] +
+                ",champRuneId:" + currentChampRunes[1] +
+                ",champBackupRuneName:" + currentBackupChampRunes[0] +
+                ",champBackupRuneId:" + currentBackupChampRunes[1] +
+                ",secondaryChampRuneName:" + secondaryChampRunes[0] +
+                ",secondaryChampRuneId:" + secondaryChampRunes[1] +
+                ",secondaryBackupChampRuneName:" + secondaryBackupChampRunes[0] +
+                ",secondaryBackupChampRuneId:" + secondaryBackupChampRunes[1] +
+                ",spell1Name:" + currentSpell1[0] +
+                ",spell1Id:" + currentSpell1[1] +
+                ",spell2Name:" + currentSpell2[0] +
+                ",spell2Id:" + currentSpell2[1] +
+                ",useRunePages:" + useRunePages +
+                ",useSummonerSpells:" + useSummonerSpells +
                 ",autoAcceptOn:" + shouldAutoAcceptbeOn +
                 ",preloadData:" + preloadData +
                 ",instaLock:" + instaLock +
@@ -397,6 +425,48 @@ namespace Leauge_Auto_Accept
                             break;
                         case "secondaryBackupBanId":
                             secondaryBackupBan[1] = columns[1];
+                            break;
+                        case "champRuneName":
+                            currentChampRunes[0] = columns[1];
+                            break;
+                        case "champRuneId":
+                            currentChampRunes[1] = columns[1];
+                            break;
+                        case "champBackupRuneName":
+                            currentBackupChampRunes[0] = columns[1];
+                            break;
+                        case "champBackupRuneId":
+                            currentBackupChampRunes[1] = columns[1];
+                            break;
+                        case "secondaryChampRuneName":
+                            secondaryChampRunes[0] = columns[1];
+                            break;
+                        case "secondaryChampRuneId":
+                            secondaryChampRunes[1] = columns[1];
+                            break;
+                        case "secondaryBackupChampRuneName":
+                            secondaryBackupChampRunes[0] = columns[1];
+                            break;
+                        case "secondaryBackupChampRuneId":
+                            secondaryBackupChampRunes[1] = columns[1];
+                            break;
+                        case "spell1Name":
+                            currentSpell1[0] = columns[1];
+                            break;
+                        case "spell1Id":
+                            currentSpell1[1] = columns[1];
+                            break;
+                        case "spell2Name":
+                            currentSpell2[0] = columns[1];
+                            break;
+                        case "spell2Id":
+                            currentSpell2[1] = columns[1];
+                            break;
+                        case "useRunePages":
+                            useRunePages = Boolean.Parse(columns[1]);
+                            break;
+                        case "useSummonerSpells":
+                            useSummonerSpells = Boolean.Parse(columns[1]);
                             break;
                         case "pickStartHoverDelay":
                             pickStartHoverDelay = Int32.Parse(columns[1]);

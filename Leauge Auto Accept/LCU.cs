@@ -63,6 +63,10 @@ namespace Leauge_Auto_Accept
                             try
                             {
                                 championsLoaded = Data.loadChampionsList();
+                                if (Settings.useSummonerSpells)
+                                {
+                                    Data.loadSpellsList();
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -82,6 +86,7 @@ namespace Leauge_Auto_Accept
                     isLeagueOpen = false;
                     MainLogic.isAutoAcceptOn = false;
                     Data.champsSorted.Clear();
+                    Data.spellsSorted.Clear();
                     Data.currentSummonerId = 0;
                     dataLoadFailed = false;
                 }

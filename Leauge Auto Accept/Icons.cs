@@ -8,30 +8,45 @@ using System.Windows.Media.Imaging;
 
 namespace Leauge_Auto_Accept
 {
-    // Loads champion portraits from the League client and keeps them for the rest of the session
-    internal static class ChampionIcons
+    // Loads champion and summoner spell icons from the League client and keeps them for the rest of the session
+    internal static class Icons
     {
         private static readonly NLog.ILogger Log = NLog.LogManager.GetCurrentClassLogger();
 
         private static readonly ConcurrentDictionary<string, Task<ImageSource>> icons = new();
         private static readonly SemaphoreSlim requestLimit = new(6);
 
-        public static Task<ImageSource> Get(string id)
+        public static Task<ImageSource> Champion(string id)
+        {
+            return Get($"lol-game-data/assets/v1/champion-icons/{id}.png");
+        }
+
+        public static Task<ImageSource> Spell(spellList spell)
+        {
+            if (string.IsNullOrEmpty(spell.iconPath))
+            {
+                return Task.FromResult<ImageSource>(null);
+            }
+
+            return Get(spell.iconPath.TrimStart('/'));
+        }
+
+        private static Task<ImageSource> Get(string path)
         {
             if (!LCU.isAuthReady)
             {
                 return Task.FromResult<ImageSource>(null);
             }
 
-            return icons.GetOrAdd(id, key => Task.Run(() => Load(key)));
+            return icons.GetOrAdd(path, key => Task.Run(() => Load(key)));
         }
 
-        private static async Task<ImageSource> Load(string id)
+        private static async Task<ImageSource> Load(string path)
         {
             await requestLimit.WaitAsync();
             try
             {
-                var resp = LCU.clientRequest("GET", $"lol-game-data/assets/v1/champion-icons/{id}.png");
+                var resp = LCU.clientRequest("GET", path);
                 if (resp.IsSuccessStatusCode && resp.RawBytes != null)
                 {
                     var image = new BitmapImage();
@@ -46,7 +61,7 @@ namespace Leauge_Auto_Accept
             }
             catch (Exception ex)
             {
-                Log.Warn(ex, "Failed to load the portrait for champion {0}.", id);
+                Log.Warn(ex, "Failed to load the icon {0}.", path);
             }
             finally
             {
@@ -54,7 +69,7 @@ namespace Leauge_Auto_Accept
             }
 
             // Don't keep the failure, the client may just not be open yet
-            icons.TryRemove(id, out _);
+            icons.TryRemove(path, out _);
             return null;
         }
     }

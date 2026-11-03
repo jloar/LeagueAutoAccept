@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Leauge_Auto_Accept
 {
@@ -12,11 +14,21 @@ namespace Leauge_Auto_Accept
         public bool free { get; set; }
     }
 
+    public class spellList
+    {
+        public string name { get; set; }
+        public string id { get; set; }
+        public string iconPath { get; set; }
+        public List<string> gameModes { get; set; } = new();
+    }
+
     internal class Data
     {
         private static readonly NLog.ILogger Log = NLog.LogManager.GetCurrentClassLogger();
 
         public static List<itemList> champsSorted = new List<itemList>();
+        public static List<itemList> runesList = new List<itemList>();
+        public static List<spellList> spellsSorted = new List<spellList>();
 
         public static long currentSummonerId = 0;
         public static string currentChatId = "";
@@ -85,6 +97,82 @@ namespace Leauge_Auto_Accept
                 champsSorted = champs;
             }
 
+            return true;
+        }
+
+        public static bool loadRunesList()
+        {
+            // Rune pages change whenever the player edits them, so they're always fetched fresh
+            Log.Info("Loading rune pages from service");
+            var runesResp = LCU.clientRequestUntilSuccess<LCUTypes.LolPerksPagesV1[]>("GET", "lol-perks/v1/pages");
+            if (!runesResp.IsSuccessStatusCode || runesResp.Data == null)
+            {
+                Log.Warn("Failed to load runes list. statusCode={0} responseStatus={1}", runesResp.StatusCode, runesResp.ResponseStatus);
+                return false;
+            }
+
+            runesList = runesResp.Data
+                .Where(x => x.IsValid == true)
+                .Select(x => new itemList() { name = (string)x.Name, id = x.Id.ToStringInvariant(), free = true })
+                .ToList();
+            return true;
+        }
+
+        public static bool loadSpellsList()
+        {
+            Log.Debug("spellsSorted.Count={0}", spellsSorted?.Count);
+            if (!spellsSorted.Any())
+            {
+                var spellsResp = LCU.clientRequest<JsonArray>("GET", "lol-game-data/assets/v1/summoner-spells.json");
+                if (!spellsResp.IsSuccessStatusCode || spellsResp.Data == null)
+                {
+                    Log.Warn("Failed to load spells list. statusCode={0} responseStatus={1}", spellsResp.StatusCode, spellsResp.ResponseStatus);
+                    return false;
+                }
+
+                // Add to list with names and available gamemodes
+                var spellsTmp = new List<spellList>(20);
+                foreach (var spell in spellsResp.Data)
+                {
+                    if (spell == null)
+                        continue;
+
+                    var gameModes = spell["gameModes"]?.Deserialize<List<string>>() ?? new List<string>();
+                    string name = (string)spell["name"] ?? "";
+
+                    // Skip spells with no available gamemodes, and Riot's unused placeholders
+                    if (gameModes.Count == 0 || name.Length == 0 || name.StartsWith("Placeholder"))
+                        continue;
+
+                    spellsTmp.Add(new spellList()
+                    {
+                        name = name,
+                        id = spell["id"].ToString(),
+                        iconPath = (string)spell["iconPath"],
+                        gameModes = gameModes
+                    });
+                }
+
+                // Remove spells from the list for gamemodes where the user has no choice
+                foreach (var spell in spellsTmp.ToList())
+                {
+                    foreach (var mode in spell.gameModes.ToList())
+                    {
+                        int count = 0;
+
+                        foreach (var otherSpell in spellsTmp)
+                        {
+                            if (otherSpell.gameModes.Contains(mode))
+                                count++;
+                        }
+                        if (count <= 2)
+                            spell.gameModes.Remove(mode);
+                    }
+                    if (spell.gameModes.Count == 0)
+                        spellsTmp.Remove(spell);
+                }
+                spellsSorted = spellsTmp;
+            }
             return true;
         }
     }
