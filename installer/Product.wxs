@@ -1,0 +1,55 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!-- Installs for the current user only, so no administrator rights are needed.
+       Keep UpgradeCode the same forever, it's how a new version replaces an old one. -->
+  <Package Name="League Auto Accept"
+           Manufacturer="League Auto Accept"
+           Version="$(var.Version)"
+           UpgradeCode="6F1C3B52-9A47-4E0D-8C21-3D5B7A90E146"
+           Scope="perUser"
+           InstallerVersion="500">
+
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of League Auto Accept is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicensePath)" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="League Auto Accept">
+          <Directory Id="LogsFolder" Name="logs" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="DesktopFolder" />
+
+    <Feature Id="Main">
+      <Component Id="AppFiles" Directory="INSTALLFOLDER" Guid="B47E0D19-2C6A-4F38-9E15-7A1D3C82F604">
+        <RegistryValue Root="HKCU" Key="Software\League Auto Accept" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="AppExe" Source="$(var.PayloadDir)\League Auto Accept.exe" />
+        <File Id="NLogConfig" Source="$(var.PayloadDir)\NLog.config" />
+        <RemoveFile Id="RemoveLogs" Directory="LogsFolder" Name="*" On="uninstall" />
+        <RemoveFolder Id="RemoveLogsFolder" Directory="LogsFolder" On="uninstall" />
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+        <RemoveFolder Id="RemoveProgramsFolder" Directory="ProgramsFolder" On="uninstall" />
+      </Component>
+
+      <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder">
+        <RegistryValue Root="HKCU" Key="Software\League Auto Accept" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="StartMenuLink" Name="League Auto Accept" Target="[INSTALLFOLDER]League Auto Accept.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+      </Component>
+
+      <Component Id="DesktopShortcut" Directory="DesktopFolder">
+        <RegistryValue Root="HKCU" Key="Software\League Auto Accept" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="DesktopLink" Name="League Auto Accept" Target="[INSTALLFOLDER]League Auto Accept.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+      </Component>
+    </Feature>
+  </Package>
+</Wix>
