@@ -14,7 +14,7 @@ namespace Leauge_Auto_Accept
         public static bool isMovingPos = false;
         private static int lastRow = 0;
 
-        public static void printWhenPossible(string text, int top = -1, int left = -1, bool newLine = true, bool updateCursor = false)
+        public static void printWhenPossible(string text, int top = -1, int left = -1, bool newLine = true, bool updateCursor = false, ConsoleColor? color = null)
         {
             if (isMovingPos)
             {
@@ -33,6 +33,10 @@ namespace Leauge_Auto_Accept
                 }
                 Console.SetCursorPosition(left, top);
             }
+            if (color.HasValue)
+            {
+                Console.ForegroundColor = color.Value;
+            }
             if (newLine)
             {
                 Console.WriteLine(text);
@@ -42,6 +46,10 @@ namespace Leauge_Auto_Accept
             {
                 Console.Write(text);
             }
+            if (color.HasValue)
+            {
+                Console.ForegroundColor = Theme.Text;
+            }
             if (updateCursor)
             {
                 UI.cursorPosition = new int[] { left, top };
@@ -49,10 +57,10 @@ namespace Leauge_Auto_Accept
             canMovePos = true;
         }
 
-        public static void printCentered(string text, int row = -1, bool newLine = true, bool updateCursor = false)
+        public static void printCentered(string text, int row = -1, bool newLine = true, bool updateCursor = false, ConsoleColor? color = null)
         {
             string[] paddedText = centerString(text);
-            printWhenPossible(paddedText[0], row, 0, newLine);
+            printWhenPossible(paddedText[0], row, 0, newLine, false, color);
 
             if (updateCursor)
             {

@@ -534,7 +534,7 @@ namespace Leauge_Auto_Accept
                     positionLeft = consolePos[1];
                     positionTop = consolePos[0];
                 }
-                Print.printWhenPossible("->", positionTop, positionLeft, false);
+                Print.printWhenPossible("► ", positionTop, positionLeft, false, false, Theme.Accent);
             }
             if (UI.showCursor)
             {

@@ -60,7 +60,7 @@ namespace Leauge_Auto_Accept
             windowType = "nocursor";
             showCursor = false;
 
-            Print.printCentered(Strings.Get("initializing"), SizeHandler.HeightCenter);
+            Print.printCentered(Strings.Get("initializing"), SizeHandler.HeightCenter, color: Theme.Accent);
         }
 
         public static void leagueClientIsClosedMessage()
@@ -72,7 +72,7 @@ namespace Leauge_Auto_Accept
 
             Console.Clear();
 
-            Print.printCentered(Strings.Get("league_client_not_found"), SizeHandler.HeightCenter);
+            Print.printCentered(Strings.Get("league_client_not_found"), SizeHandler.HeightCenter, color: Theme.Gold);
         }
 
         public static void consoleTooSmallMessage(string direction)
@@ -91,12 +91,12 @@ namespace Leauge_Auto_Accept
 
             if (direction == "width")
             {
-                Print.printCentered(Strings.Get("console_width_too_small"), SizeHandler.HeightCenter);
+                Print.printCentered(Strings.Get("console_width_too_small"), SizeHandler.HeightCenter, color: Theme.Bad);
                 Print.printCentered(Strings.Get("minimum_width_label") + SizeHandler.minWidth + Strings.Get("current_width_label") + SizeHandler.WindowWidth);
             }
             else
             {
-                Print.printCentered(Strings.Get("console_height_too_small"), SizeHandler.HeightCenter);
+                Print.printCentered(Strings.Get("console_height_too_small"), SizeHandler.HeightCenter, color: Theme.Bad);
                 Print.printCentered(Strings.Get("minimum_height_label") + SizeHandler.minHeight + Strings.Get("current_height_label") + SizeHandler.WindowHeight);
             }
         }
@@ -182,7 +182,7 @@ namespace Leauge_Auto_Accept
             // Print logo
             for (int i = 0; i < logo.Length; i++)
             {
-                Print.printCentered(logo[i], SizeHandler.HeightCenter - 12 + i);
+                Print.printCentered(logo[i], SizeHandler.HeightCenter - 12 + i, color: Theme.LogoColor(i, logo.Length));
             }
 
             // Define options
@@ -225,15 +225,20 @@ namespace Leauge_Auto_Accept
             // Print options
             for (int i = 0; i < optionName.Length; i++)
             {
-                Print.printCentered(addDotsInBetween(optionName[i], optionValue[i]), topPad + i);
+                printOptionLine(optionName[i], optionValue[i], topPad + i);
             }
 
-            // Print the two bottom buttons that are not actaul settings
-            Print.printWhenPossible("  " + Strings.Get("nav_info"), SizeHandler.HeightCenter + numOptions, leftPad + 41);
-            Print.printWhenPossible("  " + Strings.Get("nav_arena"), SizeHandler.HeightCenter + numOptions, leftPad + 20);
-            Print.printWhenPossible("  " + Strings.Get("nav_settings"), SizeHandler.HeightCenter + numOptions, leftPad + 1);
+            // Thin dividers above and below the options list
+            string divider = new string('\u2500', 44);
+            Print.printCentered(divider, topPad - 2, color: Theme.Dim);
+            Print.printCentered(divider, topPad + numOptions, color: Theme.Dim);
 
-            Print.printWhenPossible("v" + Updater.appVersion, SizeHandler.WindowHeight - 1, 0, false);
+            // Print the three bottom buttons that are not actual settings
+            Print.printWhenPossible("  " + Strings.Get("nav_info"), SizeHandler.HeightCenter + numOptions, leftPad + 41, true, false, Theme.Accent);
+            Print.printWhenPossible("  " + Strings.Get("nav_arena"), SizeHandler.HeightCenter + numOptions, leftPad + 20, true, false, Theme.Accent);
+            Print.printWhenPossible("  " + Strings.Get("nav_settings"), SizeHandler.HeightCenter + numOptions, leftPad + 1, true, false, Theme.Accent);
+
+            Print.printWhenPossible("v" + Updater.appVersion, SizeHandler.WindowHeight - 1, 0, false, false, Theme.Dim);
 
             Navigation.handlePointerMovementPrint();
 
@@ -246,7 +251,7 @@ namespace Leauge_Auto_Accept
             string disabledText = " " + Strings.Get("disabled");
             int width = Math.Max(enabledText.Length, disabledText.Length);
             string text = (MainLogic.isAutoAcceptOn ? enabledText : disabledText).PadRight(width);
-            Print.printWhenPossible(text, topPad + pos, leftPad + 38);
+            Print.printWhenPossible(text, topPad + pos, leftPad + 38, color: MainLogic.isAutoAcceptOn ? Theme.Good : Theme.Bad);
         }
 
         public static void arenaMenu()
@@ -287,7 +292,7 @@ namespace Leauge_Auto_Accept
             // Print options
             for (int i = 0; i < optionName.Length; i++)
             {
-                Print.printCentered(addDotsInBetween(optionName[i], optionValue[i]), topPad + i);
+                printOptionLine(optionName[i], optionValue[i], topPad + i);
             }
             
             Navigation.handlePointerMovementPrint();
@@ -300,32 +305,32 @@ namespace Leauge_Auto_Accept
             switch (item)
             {
                 case 0:
-                    Print.printCentered(Strings.Get("desc_enable_bravery_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_enable_bravery_2"), topPad + maxPos + 3);
+                    Print.printCentered(Strings.Get("desc_enable_bravery_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_enable_bravery_2"), topPad + maxPos + 3, color: Theme.Dim);
                     break;
                 case 1:
-                    Print.printCentered(Strings.Get("desc_ban_crowd_favourite_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_ban_crowd_favourite_2"), topPad + maxPos + 3);
+                    Print.printCentered(Strings.Get("desc_ban_crowd_favourite_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_ban_crowd_favourite_2"), topPad + maxPos + 3, color: Theme.Dim);
                     break;
                 case 2:
-                    Print.printCentered(Strings.Get("desc_crowd_favourite_1st"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3);
+                    Print.printCentered(Strings.Get("desc_crowd_favourite_1st"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3, color: Theme.Dim);
                     break;
                 case 3:
-                    Print.printCentered(Strings.Get("desc_crowd_favourite_2nd"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3);
+                    Print.printCentered(Strings.Get("desc_crowd_favourite_2nd"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3, color: Theme.Dim);
                     break;
                 case 4:
-                    Print.printCentered(Strings.Get("desc_crowd_favourite_3rd"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3);
+                    Print.printCentered(Strings.Get("desc_crowd_favourite_3rd"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3, color: Theme.Dim);
                     break;
                 case 5:
-                    Print.printCentered(Strings.Get("desc_crowd_favourite_4th"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3);
+                    Print.printCentered(Strings.Get("desc_crowd_favourite_4th"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3, color: Theme.Dim);
                     break;
                 case 6:
-                    Print.printCentered(Strings.Get("desc_crowd_favourite_5th"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3);
+                    Print.printCentered(Strings.Get("desc_crowd_favourite_5th"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_picked_over_bravery"), topPad + maxPos + 3, color: Theme.Dim);
                     break;
             }
         }
@@ -345,7 +350,7 @@ namespace Leauge_Auto_Accept
                 6 => Settings.crowdFavouraiteChamp5[0],
                 _ => throw new NotImplementedException(), //added to suppress CS8509
             };
-            Print.printWhenPossible(outputText, item + topPad, SizeHandler.WidthCenter + 22 - outputText.Length);
+            Print.printWhenPossible(outputText, item + topPad, SizeHandler.WidthCenter + 22 - outputText.Length, color: Theme.ValueColor(outputText));
         }
 
         public static void settingsMenu()
@@ -393,7 +398,7 @@ namespace Leauge_Auto_Accept
 
             for (int i = 0; i < optionName.Length; i++)
             {
-                Print.printCentered(addDotsInBetween(optionName[i], optionValue[i]), topPad + i);
+                printOptionLine(optionName[i], optionValue[i], topPad + i);
             }
 
             Navigation.handlePointerMovementPrint();
@@ -408,48 +413,48 @@ namespace Leauge_Auto_Accept
             switch (item)
             {
                 case 0:
-                    Print.printCentered(Strings.Get("desc_save_settings_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_save_settings_2"));
+                    Print.printCentered(Strings.Get("desc_save_settings_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_save_settings_2"), color: Theme.Dim);
                     break;
                 case 1:
-                    Print.printCentered(Strings.Get("desc_preload_data_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_preload_data_2"));
+                    Print.printCentered(Strings.Get("desc_preload_data_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_preload_data_2"), color: Theme.Dim);
                     break;
                 case 2:
-                    Print.printCentered(Strings.Get("desc_instalock_pick_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_bypass_lock_delay"));
+                    Print.printCentered(Strings.Get("desc_instalock_pick_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_bypass_lock_delay"), color: Theme.Dim);
                     break;
                 case 3:
-                    Print.printCentered(Strings.Get("desc_instalock_ban_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_bypass_lock_delay"));
+                    Print.printCentered(Strings.Get("desc_instalock_ban_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_bypass_lock_delay"), color: Theme.Dim);
                     break;
                 case 4:
-                    Print.printCentered(Strings.Get("desc_disable_update_check"), topPad + maxPos + 2);
-                    Print.printCentered("");
+                    Print.printCentered(Strings.Get("desc_disable_update_check"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered("", color: Theme.Dim);
                     break;
                 case 5:
-                    Print.printCentered(Strings.Get("desc_auto_trade_pick_order"), topPad + maxPos + 2);
-                    Print.printCentered("");
+                    Print.printCentered(Strings.Get("desc_auto_trade_pick_order"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered("", color: Theme.Dim);
                     break;
                 case 6:
-                    Print.printCentered(Strings.Get("desc_instant_hover_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_instant_hover_2"));
+                    Print.printCentered(Strings.Get("desc_instant_hover_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_instant_hover_2"), color: Theme.Dim);
                     break;
                 case 7:
-                    Print.printCentered(Strings.Get("desc_auto_restart_queue_1"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_auto_restart_queue_2"));
+                    Print.printCentered(Strings.Get("desc_auto_restart_queue_1"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_auto_restart_queue_2"), color: Theme.Dim);
                     break;
                 case 8:
-                    Print.printCentered(Strings.Get("desc_cancel_queue_dodge"), topPad + maxPos + 2);
-                    Print.printCentered("");
+                    Print.printCentered(Strings.Get("desc_cancel_queue_dodge"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered("", color: Theme.Dim);
                     break;
                 case 9:
-                    Print.printCentered(Strings.Get("desc_delay_settings"), topPad + maxPos + 2);
-                    Print.printCentered("");
+                    Print.printCentered(Strings.Get("desc_delay_settings"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered("", color: Theme.Dim);
                     break;
                 case 10:
-                    Print.printCentered(Strings.Get("desc_language"), topPad + maxPos + 2);
-                    Print.printCentered("");
+                    Print.printCentered(Strings.Get("desc_language"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered("", color: Theme.Dim);
                     break;
             }
         }
@@ -471,7 +476,7 @@ namespace Leauge_Auto_Accept
                 8 => Settings.cancelQueueAfterDodge ? " " + Strings.Get("yes") : ". " + Strings.Get("no"),
                 _ => ""
             };
-            Print.printWhenPossible(outputText, item + topPad, SizeHandler.WidthCenter + 22 - outputText.Length);
+            Print.printWhenPossible(outputText, item + topPad, SizeHandler.WidthCenter + 22 - outputText.Length, color: Theme.ValueColor(outputText));
         }
 
         public static void delayMenu()
@@ -512,7 +517,7 @@ namespace Leauge_Auto_Accept
 
             for (int i = 0; i < optionName.Length; i++)
             {
-                Print.printCentered(addDotsInBetween(optionName[i], optionValue[i]), topPad + i);
+                printOptionLine(optionName[i], optionValue[i], topPad + i);
             }
 
             Navigation.handlePointerMovementPrint();
@@ -527,36 +532,36 @@ namespace Leauge_Auto_Accept
             switch (item)
             {
                 case 0:
-                    Print.printCentered(Strings.Get("desc_pick_hover_delay"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_default_10000"));
+                    Print.printCentered(Strings.Get("desc_pick_hover_delay"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_default_10000"), color: Theme.Dim);
                     break;
                 case 1:
-                    Print.printCentered(Strings.Get("desc_pick_lock_delay_start"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_default_999999999"));
+                    Print.printCentered(Strings.Get("desc_pick_lock_delay_start"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_default_999999999"), color: Theme.Dim);
                     break;
                 case 2:
-                    Print.printCentered(Strings.Get("desc_pick_lock_delay_end"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_lock_end_warning"));
+                    Print.printCentered(Strings.Get("desc_pick_lock_delay_end"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_lock_end_warning"), color: Theme.Dim);
                     break;
                 case 3:
-                    Print.printCentered(Strings.Get("desc_ban_hover_delay"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_default_1500"));
+                    Print.printCentered(Strings.Get("desc_ban_hover_delay"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_default_1500"), color: Theme.Dim);
                     break;
                 case 4:
-                    Print.printCentered(Strings.Get("desc_pick_lock_delay_start"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_default_999999999"));
+                    Print.printCentered(Strings.Get("desc_pick_lock_delay_start"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_default_999999999"), color: Theme.Dim);
                     break;
                 case 5:
-                    Print.printCentered(Strings.Get("desc_ban_lock_delay_end"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_default_1000"));
+                    Print.printCentered(Strings.Get("desc_ban_lock_delay_end"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_default_1000"), color: Theme.Dim);
                     break;
                 case 6:
-                    Print.printCentered(Strings.Get("desc_max_queue_time"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_default_300000"));
+                    Print.printCentered(Strings.Get("desc_max_queue_time"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_default_300000"), color: Theme.Dim);
                     break;
                 case 7:
-                    Print.printCentered(Strings.Get("desc_chat_messages_delay"), topPad + maxPos + 2);
-                    Print.printCentered(Strings.Get("desc_default_100"));
+                    Print.printCentered(Strings.Get("desc_chat_messages_delay"), topPad + maxPos + 2, color: Theme.Dim);
+                    Print.printCentered(Strings.Get("desc_default_100"), color: Theme.Dim);
                     break;
             }
         }
@@ -577,7 +582,7 @@ namespace Leauge_Auto_Accept
                 7 => (" " + Settings.chatMessagesDelay).PadLeft(10, '.'),
                 _ => ""
             };
-            Print.printWhenPossible(outputText, item + topPad, SizeHandler.WidthCenter + 22 - outputText.Length);
+            Print.printWhenPossible(outputText, item + topPad, SizeHandler.WidthCenter + 22 - outputText.Length, color: Theme.ValueColor(outputText));
         }
 
         public static void languageMenu()
@@ -599,7 +604,7 @@ namespace Leauge_Auto_Accept
             {
                 var lang = Strings.AvailableLanguages[i];
                 string value = Settings.currentLanguage == lang.Code ? Strings.Get("selected") : "";
-                Print.printCentered(addDotsInBetween(lang.Name, value), topPad + i);
+                printOptionLine(lang.Name, value, topPad + i);
             }
 
             Navigation.handlePointerMovementPrint();
@@ -622,10 +627,10 @@ namespace Leauge_Auto_Accept
             Print.printCentered(addDotsInBetween(Strings.Get("made_by"), "sweetriverfish"), SizeHandler.HeightCenter - 5);
             Print.printCentered(addDotsInBetween(Strings.Get("version_label"), Updater.appVersion));
 
-            Print.printCentered(Strings.Get("source_code"), SizeHandler.HeightCenter -2);
-            Print.printCentered(" github.com/sweetriverfish/LeagueAutoAccept");
+            Print.printCentered(Strings.Get("source_code"), SizeHandler.HeightCenter -2, color: Theme.Gold);
+            Print.printCentered(" github.com/sweetriverfish/LeagueAutoAccept", color: Theme.Accent);
 
-            Print.printCentered(Strings.Get("contributors"), SizeHandler.HeightCenter + 1);
+            Print.printCentered(Strings.Get("contributors"), SizeHandler.HeightCenter + 1, color: Theme.Gold);
 
             string[] ContributorsList = {
                 "IxPrumxI",
@@ -650,7 +655,7 @@ namespace Leauge_Auto_Accept
 
             for (int i = 0; i < ContributorsList.Length; i++)
             {
-                Print.printCentered(ContributorsList[i]);
+                Print.printCentered(ContributorsList[i], color: Theme.Dim);
             }
         }
 
@@ -669,7 +674,7 @@ namespace Leauge_Auto_Accept
 
             Console.Clear();
 
-            Print.printCentered(Strings.Get("confirm_exit"), topPad - 2);
+            Print.printCentered(Strings.Get("confirm_exit"), topPad - 2, color: Theme.Gold);
             Print.printWhenPossible((" " + Strings.Get("no")).PadLeft(32, ' '), topPad, leftPad + 3, false);
             Print.printWhenPossible(Strings.Get("yes") + " ", topPad, leftPad + 3, false);
 
@@ -1003,6 +1008,27 @@ namespace Leauge_Auto_Accept
             }
 
             updateCursorPosition();
+        }
+
+        // Prints "name ..... value" centered on a row, with the name, the dots and the value in separate colors
+        private static void printOptionLine(string name, string value, int row)
+        {
+            string line = addDotsInBetween(name, value);
+            int left = Math.Max(0, (SizeHandler.WindowWidth - line.Length) / 2);
+
+            // Find where the dots end so the value part can be colored on its own
+            int dotsStart = Math.Min(name.Length + 1, line.Length);
+            int dotsEnd = dotsStart;
+            while (dotsEnd < line.Length && line[dotsEnd] == '.')
+            {
+                dotsEnd++;
+            }
+            int valueStart = Math.Min(dotsEnd + 1, line.Length);
+
+            Print.printWhenPossible(line.Substring(0, dotsStart), row, left, false, false, Theme.Text);
+            Print.printWhenPossible(line.Substring(dotsStart, valueStart - dotsStart), row, left + dotsStart, false, false, Theme.Dim);
+            string valueText = line.Substring(valueStart);
+            Print.printWhenPossible(valueText, row, left + valueStart, false, false, Theme.ValueColor(valueText));
         }
 
         private static string addDotsInBetween(string firstString, string secondString, int totalLength = 44)
