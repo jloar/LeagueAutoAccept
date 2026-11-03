@@ -34,7 +34,8 @@ namespace Leauge_Auto_Accept
         // Picks a color for a setting's value text
         public static ConsoleColor ValueColor(string value)
         {
-            string v = (value ?? "").Trim('.', ' ');
+            // Shortened values end in a ~
+            string v = (value ?? "").Trim('.', ' ', '~');
 
             if (v.Length == 0 || v == "Unselected" || v == "None")
             {

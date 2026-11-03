@@ -8,17 +8,13 @@ namespace Leauge_Auto_Accept
     internal class Settings
     {
         public static string[] currentChamp = { "Unselected", "0" };
-        public static string[] currentChampRunes = { "Unselected", "0" };
         public static string[] currentBackupChamp = { "Unselected", "0" };
-        public static string[] currentBackupChampRunes = { "Unselected", "0" };
         public static string[] secondaryChamp = { "Unselected", "0" };
-        public static string[] secondaryChampRunes = { "Unselected", "0" };
         public static string[] secondaryBackupChamp = { "Unselected", "0" };
-        public static string[] secondaryBackupChampRunes = { "Unselected", "0" };
         public static string[] currentBan = { "Unselected", "0" };
         public static string[] currentBackupBan = { "Unselected", "0" };
-        public static string[] currentSpell1 = { "Unselected", "0" };
-        public static string[] currentSpell2 = { "Unselected", "0" };
+        public static string[] secondaryBan = { "Unselected", "0" };
+        public static string[] secondaryBackupBan = { "Unselected", "0" };
         public static bool bravery = false;
         public static bool banCrowdFavourite = false;
         public static string[] crowdFavouraiteChamp1 = { "Unselected", "0" };
@@ -227,7 +223,7 @@ namespace Leauge_Auto_Accept
             {
                 champsFiltered.Add(new itemList() { name = "Unselected", id = "0" });
             }
-            if (UI.currentChampPicker == 4 || UI.currentChampPicker == 10)
+            if (UI.isBanPicker())
             {
                 if ("none".Contains(Navigation.currentInput.ToLower()))
                 {
@@ -238,7 +234,7 @@ namespace Leauge_Auto_Accept
             {
                 if (champ.name.ToLower().Contains(Navigation.currentInput.ToLower()))
                 {
-                    if (UI.currentChampPicker != 4 && UI.currentChampPicker != 10)
+                    if (!UI.isBanPicker())
                     {
                         if (!champ.free)
                         {
@@ -309,108 +305,13 @@ namespace Leauge_Auto_Accept
                         currentBackupBan[0] = name;
                         currentBackupBan[1] = id;
                         break;
-                }
-
-                if (saveSettings)
-                {
-                    settingsSave();
-                }
-            }
-        }
-
-        public static void saveSelectedSpell()
-        {
-            List<itemList> spellsFiltered = new List<itemList>();
-            if ("unselected".Contains(Navigation.currentInput.ToLower()))
-            {
-                spellsFiltered.Add(new itemList() { name = "Unselected", id = "0" });
-            }
-            foreach (var spell in Data.spellsSorted)
-            {
-                if (spell.name.ToLower().Contains(Navigation.currentInput.ToLower()))
-                {
-                    spellsFiltered.Add(new itemList() { name = spell.name, id = spell.id });
-                }
-            }
-
-            if (spellsFiltered.Count > 0)
-            {
-                string name;
-                string id;
-                if (Navigation.currentPos < 0)
-                {
-                    name = "Unselected";
-                    id = "0";
-                }
-                else
-                {
-                    name = spellsFiltered[Navigation.currentPos].name;
-                    id = spellsFiltered[Navigation.currentPos].id;
-                }
-                if (UI.currentSpellSlot == 0)
-                {
-                    currentSpell1[0] = name;
-                    currentSpell1[1] = id;
-                }
-                else
-                {
-                    currentSpell2[0] = name;
-                    currentSpell2[1] = id;
-                }
-                if (saveSettings)
-                {
-                    settingsSave();
-                }
-            }
-        }
-
-        public static void saveSelectedRune()
-        {
-            List<itemList> runesFiltered = new List<itemList>();
-            if ("unselected".Contains(Navigation.currentInput.ToLower()))
-            {
-                runesFiltered.Add(new itemList() { name = "Unselected", id = "0" });
-            }
-            foreach (var spell in Data.runesList)
-            {
-                if (spell.name.ToLower().Contains(Navigation.currentInput.ToLower()))
-                {
-                    runesFiltered.Add(new itemList() { name = spell.name, id = spell.id });
-                }
-            }
-
-            if (runesFiltered.Count > 0)
-            {
-                string name;
-                string id;
-                if (Navigation.currentPos < 0)
-                {
-                    name = "Unselected";
-                    id = "0";
-                }
-                else
-                {
-                    name = runesFiltered[Navigation.currentPos].name;
-                    id = runesFiltered[Navigation.currentPos].id;
-                }
-
-                switch (UI.currentChampPicker)
-                {
-                    case 0:
-                        currentChampRunes[0] = name;
-                        currentChampRunes[1] = id;
+                    case 11:
+                        secondaryBan[0] = name;
+                        secondaryBan[1] = id;
                         break;
-                    case 1:
-                        currentBackupChampRunes[0] = name;
-                        currentBackupChampRunes[1] = id;
-                        break;
-                    case 2:
-                        secondaryChampRunes[0] = name;
-                        secondaryChampRunes[1] = id;
-                        break;
-                    case 3:
-                        secondaryBackupChampRunes[0] = name;
-                        secondaryBackupChampRunes[1] = id;
+                    case 12:
+                        secondaryBackupBan[0] = name;
+                        secondaryBackupBan[1] = id;
                         break;
                 }
 
@@ -485,20 +386,12 @@ namespace Leauge_Auto_Accept
             string config =
                 "champName:" + currentChamp[0] +
                 ",champId:" + currentChamp[1] +
-                ",champRuneName:" + currentChampRunes[0] +
-                ",champRuneId:" + currentChampRunes[1] +
                 ",champBackupName:" + currentBackupChamp[0] +
                 ",champBackupId:" + currentBackupChamp[1] +
-                ",champBackupRuneName:" + currentBackupChampRunes[0] +
-                ",champBackupRuneId:" + currentBackupChampRunes[1] +
                 ",secondaryChampName:" + secondaryChamp[0] + 
                 ",secondaryChampId:" + secondaryChamp[1] +
-                ",secondaryChampRuneName:" + secondaryChampRunes[0] +
-                ",secondaryChampRuneId:" + secondaryChampRunes[1] +
                 ",secondaryBackupChampName:" + secondaryBackupChamp[0] +
                 ",secondaryBackupChampId:" + secondaryBackupChamp[1] +
-                ",secondaryBackupChampRuneName:" + secondaryBackupChampRunes[0] +
-                ",secondaryBackupChampRuneId:" + secondaryBackupChampRunes[1] +
                 ",arenaBravery:" + bravery +
                 ",banCrowdFavourite:" + banCrowdFavourite +
                 ",arenaCrowdFavourite1Name:" + crowdFavouraiteChamp1[0] +
@@ -515,10 +408,10 @@ namespace Leauge_Auto_Accept
                 ",banId:" + currentBan[1] +
                 ",backupBanName:" + currentBackupBan[0] +
                 ",backupBanId:" + currentBackupBan[1] +
-                ",spell1Name:" + currentSpell1[0] +
-                ",spell1Id:" + currentSpell1[1] +
-                ",spell2Name:" + currentSpell2[0] +
-                ",spell2Id:" + currentSpell2[1] +
+                ",secondaryBanName:" + secondaryBan[0] +
+                ",secondaryBanId:" + secondaryBan[1] +
+                ",secondaryBackupBanName:" + secondaryBackupBan[0] +
+                ",secondaryBackupBanId:" + secondaryBackupBan[1] +
                 ",autoAcceptOn:" + shouldAutoAcceptbeOn +
                 ",preloadData:" + preloadData +
                 ",instaLock:" + instaLock +
@@ -607,23 +500,11 @@ namespace Leauge_Auto_Accept
                         case "champId":
                             currentChamp[1] = columns[1];
                             break;
-                        case "champRuneName":
-                            currentChampRunes[0] = columns[1];
-                            break;
-                        case "champRuneId":
-                            currentChampRunes[1] = columns[1];
-                            break;
                         case "champBackupName":
                             currentBackupChamp[0] = columns[1];
                             break;
                         case "champBackupId":
                             currentBackupChamp[1] = columns[1];
-                            break;
-                        case "champBackupRuneName":
-                            currentBackupChampRunes[0] = columns[1];
-                            break;
-                        case "champBackupRuneId":
-                            currentBackupChampRunes[1] = columns[1];
                             break;
                         case "secondaryChampName":
                             secondaryChamp[0] = columns[1];
@@ -631,23 +512,11 @@ namespace Leauge_Auto_Accept
                         case "secondaryChampId":
                             secondaryChamp[1] = columns[1];
                             break;
-                        case "secondaryChampRuneName":
-                            secondaryChampRunes[0] = columns[1];
-                            break;
-                        case "secondaryChampRuneId":
-                            secondaryChampRunes[1] = columns[1];
-                            break;
                         case "secondaryBackupChampName":
                             secondaryBackupChamp[0] = columns[1];
                             break;
                         case "secondaryBackupChampId":
                             secondaryBackupChamp[1] = columns[1];
-                            break;
-                        case "secondaryBackupChampRuneName":
-                            secondaryBackupChampRunes[0] = columns[1];
-                            break;
-                        case "secondaryBackupChampRuneId":
-                            secondaryBackupChampRunes[1] = columns[1];
                             break;
                         case "arenaBravery":
                             bravery = Boolean.Parse(columns[1]);
@@ -697,17 +566,17 @@ namespace Leauge_Auto_Accept
                         case "backupBanId":
                             currentBackupBan[1] = columns[1];
                             break;
-                        case "spell1Name":
-                            currentSpell1[0] = columns[1];
+                        case "secondaryBanName":
+                            secondaryBan[0] = columns[1];
                             break;
-                        case "spell1Id":
-                            currentSpell1[1] = columns[1];
+                        case "secondaryBanId":
+                            secondaryBan[1] = columns[1];
                             break;
-                        case "spell2Name":
-                            currentSpell2[0] = columns[1];
+                        case "secondaryBackupBanName":
+                            secondaryBackupBan[0] = columns[1];
                             break;
-                        case "spell2Id":
-                            currentSpell2[1] = columns[1];
+                        case "secondaryBackupBanId":
+                            secondaryBackupBan[1] = columns[1];
                             break;
                         case "pickStartHoverDelay":
                             pickStartHoverDelay = Int32.Parse(columns[1]);

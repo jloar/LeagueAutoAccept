@@ -8,11 +8,8 @@ namespace Leauge_Auto_Accept
         public static string currentWindow = "";
         public static string previousWindow = "";
         public static int currentChampPicker = 0;
-        public static int currentSpellSlot = 0;
 
         public static int totalChamps = 0;
-        public static int totalRunes = 0;
-        public static int totalSpells = 0;
 
         // normal/+grid/pages/nocursor/messageEdit
         public static string windowType = "";
@@ -137,12 +134,6 @@ namespace Leauge_Auto_Accept
                 case "champSelector":
                     champSelector();
                     break;
-                case "runeSelector":
-                    runeSelector();
-                    break;
-                case "spellSelector":
-                    spellSelector();
-                    break;
                 case "chatMessagesWindow":
                     chatMessagesWindow();
                     break;
@@ -187,34 +178,26 @@ namespace Leauge_Auto_Accept
 
             // Define options
             string[] optionName = {
-                Strings.Get("select_primary_champion"),
-                Strings.Get("rune_page"),
+                Strings.Get("primary_champion"),
                 Strings.Get("primary_backup_champion"),
-                Strings.Get("rune_page"),
-                Strings.Get("select_secondary_champion"),
-                Strings.Get("rune_page"),
+                Strings.Get("secondary_champion"),
                 Strings.Get("secondary_backup_champion"),
-                Strings.Get("rune_page"),
-                Strings.Get("select_a_ban"),
-                Strings.Get("backup_ban"),
-                Strings.Get("select_summoner_spell_1"),
-                Strings.Get("select_summoner_spell_2"),
+                Strings.Get("primary_ban"),
+                Strings.Get("primary_backup_ban"),
+                Strings.Get("secondary_ban"),
+                Strings.Get("secondary_backup_ban"),
                 Strings.Get("instant_chat_messages"),
                 Strings.Get("enable_auto_accept")
             };
             string[] optionValue = {
                 Settings.currentChamp[0],
-                Settings.currentChampRunes[0],
                 Settings.currentBackupChamp[0],
-                Settings.currentBackupChampRunes[0],
                 Settings.secondaryChamp[0],
-                Settings.secondaryChampRunes[0],
                 Settings.secondaryBackupChamp[0],
-                Settings.secondaryBackupChampRunes[0],
                 Settings.currentBan[0],
                 Settings.currentBackupBan[0],
-                Settings.currentSpell1[0],
-                Settings.currentSpell2[0],
+                Settings.secondaryBan[0],
+                Settings.secondaryBackupBan[0],
                 Settings.chatMessagesEnabled ? Strings.Get("enabled") + ", " + Settings.chatMessages.Count : Strings.Get("disabled"),
                 MainLogic.isAutoAcceptOn ? Strings.Get("enabled") : Strings.Get("disabled")
             };
@@ -683,6 +666,11 @@ namespace Leauge_Auto_Accept
             Print.canMovePos = true;
         }
 
+        public static bool isBanPicker()
+        {
+            return currentChampPicker == 4 || currentChampPicker == 10 || currentChampPicker == 11 || currentChampPicker == 12;
+        }
+
         public static void champSelector()
         {
             Print.canMovePos = false;
@@ -724,7 +712,7 @@ namespace Leauge_Auto_Accept
             {
                 champsFiltered.Add(new itemList() { name = "Unselected", id = "0" });
             }
-            if (currentChampPicker == 4 || currentChampPicker == 10)
+            if (isBanPicker())
             {
                 if ("none".Contains(Navigation.currentInput.ToLower()))
                 {
@@ -736,7 +724,7 @@ namespace Leauge_Auto_Accept
                 if (champ.name.ToLower().Contains(Navigation.currentInput.ToLower()))
                 {
                     // Make sure the champ is free or if it's for a ban before adding it to the list
-                     if (champ.free || (currentChampPicker == 4 || currentChampPicker == 10) && int.Parse(champ.id) < 10000)
+                    if (champ.free || isBanPicker())
                     {
                         champsFiltered.Add(new itemList() { name = champ.name, id = champ.id });
                     }
@@ -782,196 +770,12 @@ namespace Leauge_Auto_Accept
             displayCursorIfNeeded();
         }
 
-        public static void runeSelector()
-        {
-            Print.canMovePos = false;
-
-            totalRows = SizeHandler.WindowHeight - 2;
-
-            currentWindow = "runeSelector";
-            windowType = "grid";
-            showCursor = false;
-
-            Navigation.currentInput = "";
-
-            Console.Clear();
-
-            if (!Data.loadRunesList())
-            {
-                Print.printCentered(Strings.Get("failed_load_runes"), SizeHandler.HeightCenter - 1);
-                Print.printCentered(Strings.Get("press_escape_to_return"));
-                return;
-            }
-
-            displayRunes();
-            updateCurrentFilter();
-        }
-
-        private static void displayRunes()
-        {
-            Console.CursorVisible = false;
-            Navigation.currentPos = 0;
-            Navigation.consolePosLast = 0;
-
-            topPad = 0;
-            leftPad = 0;
-
-            Console.SetCursorPosition(0, 0);
-
-            List<itemList> runesFiltered = new List<itemList>();
-            if ("unselected".Contains(Navigation.currentInput.ToLower()))
-            {
-                runesFiltered.Add(new itemList() { name = "Unselected", id = "0" });
-            }
-            foreach (var rune in Data.runesList)
-            {
-                if (rune.name.ToLower().Contains(Navigation.currentInput.ToLower()))
-                {
-                    runesFiltered.Add(new itemList() { name = rune.name, id = rune.id });
-                }
-            }
-
-            totalRunes = runesFiltered.Count;
-            maxPos = totalRunes;
-
-            int currentRow = 0;
-            string[] runeoutput = new string[totalRows];
-
-            foreach (var rune in runesFiltered)
-            {
-                string line = "   " + rune.name;
-                line = line.PadRight(columnSize, ' ');
-
-                runeoutput[currentRow] += line;
-
-                currentRow++;
-                if (currentRow >= totalRows)
-                {
-                    currentRow = 0;
-                }
-            }
-
-            foreach (var line in runeoutput)
-            {
-                string lineNew;
-                if (line != null)
-                {
-                    lineNew = line.Remove(line.Length - 1);
-                    lineNew = lineNew.PadRight(119, ' ');
-                }
-                else
-                {
-                    lineNew = "".PadRight(119, ' ');
-                }
-                Print.printWhenPossible(lineNew);
-            }
-            Navigation.handlePointerMovementPrint();
-            Print.canMovePos = true;
-            displayCursorIfNeeded();
-        }
-
-        public static void spellSelector()
-        {
-            Print.canMovePos = false;
-
-            totalRows = SizeHandler.WindowHeight - 2;
-
-            currentWindow = "spellSelector";
-            windowType = "grid";
-            showCursor = false;
-
-            Navigation.currentInput = "";
-
-            Console.Clear();
-
-            if (!Data.loadSpellsList())
-            {
-                Print.printCentered(Strings.Get("failed_load_spells"), SizeHandler.HeightCenter - 1);
-                Print.printCentered(Strings.Get("press_escape_to_return"));
-                return;
-            }
-
-            displaySpells();
-            updateCurrentFilter();
-        }
-
-        private static void displaySpells()
-        {
-            Console.CursorVisible = false;
-            Navigation.currentPos = 0;
-            Navigation.consolePosLast = 0;
-
-            topPad = 0;
-            leftPad = 0;
-
-            Console.SetCursorPosition(0, 0);
-
-            List<itemList> spellsFiltered = new List<itemList>();
-            if ("unselected".Contains(Navigation.currentInput.ToLower()))
-            {
-                spellsFiltered.Add(new itemList() { name = "Unselected", id = "0" });
-            }
-            foreach (var spell in Data.spellsSorted)
-            {
-                if (spell.name.ToLower().Contains(Navigation.currentInput.ToLower()))
-                {
-                    spellsFiltered.Add(new itemList() { name = spell.name, id = spell.id });
-                }
-            }
-
-            totalSpells = spellsFiltered.Count;
-            maxPos = totalSpells;
-
-            int currentRow = 0;
-            string[] spelloutput = new string[totalRows];
-
-            foreach (var spell in spellsFiltered)
-            {
-                string line = "   " + spell.name;
-                line = line.PadRight(columnSize, ' ');
-
-                spelloutput[currentRow] += line;
-
-                currentRow++;
-                if (currentRow >= totalRows)
-                {
-                    currentRow = 0;
-                }
-            }
-
-            foreach (var line in spelloutput)
-            {
-                string lineNew;
-                if (line != null)
-                {
-                    lineNew = line.Remove(line.Length - 1);
-                    lineNew = lineNew.PadRight(119, ' ');
-                }
-                else
-                {
-                    lineNew = "".PadRight(119, ' ');
-                }
-                Print.printWhenPossible(lineNew);
-            }
-            Navigation.handlePointerMovementPrint();
-            Print.canMovePos = true;
-            displayCursorIfNeeded();
-        }
-
         public static void updateCurrentFilter()
         {
             showCursor = true;
             if (currentWindow == "champSelector")
             {
                 displayChamps();
-            }
-            else if (currentWindow == "spellSelector")
-            {
-                displaySpells();
-            }
-             else if (currentWindow == "runeSelector")
-            {
-                displayRunes();
             }
 
             Navigation.currentPos = 0;

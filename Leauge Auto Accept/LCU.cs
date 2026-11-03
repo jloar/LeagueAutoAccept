@@ -59,18 +59,16 @@ namespace Leauge_Auto_Accept
                         if (Settings.preloadData)
                         {
                             bool championsLoaded = false;
-                            bool spellsLoaded = false;
                             try
                             {
                                 championsLoaded = Data.loadChampionsList();
-                                spellsLoaded = Data.loadSpellsList();
                             }
                             catch (Exception ex)
                             {
                                 // Riot can change these responses in any patch, that should not block the main menu
                                 Log.Error(ex, "Failed to preload League data.");
                             }
-                            if (!championsLoaded || !spellsLoaded)
+                            if (!championsLoaded)
                             {
                                 Console.Clear();
                                 Print.printCentered(Strings.Get("some_league_data_failed"), SizeHandler.HeightCenter - 1);
@@ -93,7 +91,6 @@ namespace Leauge_Auto_Accept
                     isLeagueOpen = false;
                     MainLogic.isAutoAcceptOn = false;
                     Data.champsSorted.Clear();
-                    Data.spellsSorted.Clear();
                     Data.currentSummonerId = 0;
                     if (UI.currentWindow != "leagueClientIsClosedMessage" && UI.currentWindow != "exitMenu")
                     {

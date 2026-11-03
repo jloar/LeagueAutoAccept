@@ -19,16 +19,16 @@ namespace Leauge_Auto_Accept
         {
             while (true)
             {
-                if (UI.currentWindow == "consoleTooSmallMessage")
-                {
-                    Thread.Sleep(1000);
-                    break;
-                }
-
                 bool movePointer = false;
 
                 ConsoleKeyInfo key = new ConsoleKeyInfo();
                 key = Console.ReadKey(true);
+
+                // Ignore keys until the window is back to a valid size
+                if (UI.currentWindow == "consoleTooSmallMessage")
+                {
+                    continue;
+                }
 
                 switch (key.Key)
                 {
@@ -327,22 +327,9 @@ namespace Leauge_Auto_Accept
                     exitMenuNav();
                     break;
                 case "champSelector":
-                case "spellSelector":
-                case "runeSelector":
                     if (currentInput != "Lochel")
                     {
-                        if (UI.currentWindow == "champSelector")
-                        {
-                            Settings.saveSelectedChamp();
-                        }
-                        else if (UI.currentWindow == "spellSelector")
-                        {
-                            Settings.saveSelectedSpell();
-                        }
-                        else if (UI.currentWindow == "runeSelector")
-                        {
-                            Settings.saveSelectedRune();
-                        }
+                        Settings.saveSelectedChamp();
                         if (UI.previousWindow == "arenaMenu")
                         {
                             UI.previousWindow = "";
@@ -366,7 +353,7 @@ namespace Leauge_Auto_Accept
 
         private static void handleInputBackspace()
         {
-            if (UI.currentWindow == "champSelector" || UI.currentWindow == "spellSelector" || UI.currentWindow == "runeSelector")
+            if (UI.currentWindow == "champSelector")
             {
                 if (currentInput.Length > 0)
                 {
@@ -391,7 +378,7 @@ namespace Leauge_Auto_Accept
 
         private static void handleInput(char key)
         {
-            if (UI.currentWindow == "champSelector" || UI.currentWindow == "spellSelector"|| UI.currentWindow == "runeSelector")
+            if (UI.currentWindow == "champSelector")
             {
                 if (currentInput.Length < 100)
                 {
@@ -622,63 +609,47 @@ namespace Leauge_Auto_Accept
                     UI.champSelector();
                     break;
                 case 1:
-                    UI.currentChampPicker = 0;
-                    UI.runeSelector();
+                    UI.currentChampPicker = 1;
+                    UI.champSelector();
                     break;
                 case 2:
-                    UI.currentChampPicker = 1;
+                    UI.currentChampPicker = 2;
                     UI.champSelector();
                     break;
                 case 3:
-                    UI.currentChampPicker = 1;
-                    UI.runeSelector();
+                    UI.currentChampPicker = 3;
+                    UI.champSelector();
                     break;
                 case 4:
-                    UI.currentChampPicker = 2;
-                    UI.champSelector();
-                    break;
-                case 5:
-                    UI.currentChampPicker = 2;
-                    UI.runeSelector();
-                    break;
-                case 6:
-                    UI.currentChampPicker = 3;
-                    UI.champSelector();
-                    break;
-                case 7:
-                    UI.currentChampPicker = 3;
-                    UI.runeSelector();
-                    break;
-                case 8:
                     UI.currentChampPicker = 4;
                     UI.champSelector();
                     break;
-                case 9:
+                case 5:
                     UI.currentChampPicker = 10;
                     UI.champSelector();
                     break;
-                case 10:
-                    UI.currentSpellSlot = 0;
-                    UI.spellSelector();
+                case 6:
+                    UI.currentChampPicker = 11;
+                    UI.champSelector();
                     break;
-                case 11:
-                    UI.currentSpellSlot = 1;
-                    UI.spellSelector();
+                case 7:
+                    UI.currentChampPicker = 12;
+                    UI.champSelector();
                     break;
-                case 12:
+                case 8:
                     UI.chatMessagesWindow();
                     break;
-                case 13:
+                case 9:
                     Settings.toggleAutoAcceptSetting();
                     UI.toggleAutoAcceptSettingUI(currentPos);
                     break;
-                case 14:
+                case 10:
                     UI.settingsMenu();
                     break;
-                case 15:
+                case 11:
                     UI.arenaMenu();
                     break;
-                case 16:
+                case 12:
                     UI.infoMenu();
                     break;
             }

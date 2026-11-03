@@ -18,8 +18,6 @@ namespace Leauge_Auto_Accept
         private static bool lockedChamp = false;
         private static bool pickedBan = false;
         private static bool lockedBan = false;
-        private static bool pickedSpell1 = false;
-        private static bool pickedSpell2 = false;
         private static bool sentChatMessages = false;
 
         // Arena
@@ -68,10 +66,7 @@ namespace Leauge_Auto_Accept
                                 handleMatchmakingAccept();
                                 break;
                             case "ChampSelect":
-                                var gameMode = gameSessionResp.Data.GameData?.Queue?.GameMode ?? "";
-                                //Console.WriteLine(gameMode);
-                                //Console.ReadLine();
-                                handleChampSelect(gameMode);
+                                handleChampSelect();
                                 handlePickOrderSwap();
                                 break;
                             case "InProgress":
@@ -169,7 +164,7 @@ namespace Leauge_Auto_Accept
         }
 
 
-        private static void handleChampSelect(string gameMode)
+        private static void handleChampSelect()
         {
             // Get data for the current ongoing champ select
             var currentChampSelect = LCU.clientRequest<LCUTypes.LolChampSelectSessionV1>("GET", "lol-champ-select/v1/session");
@@ -187,8 +182,6 @@ namespace Leauge_Auto_Accept
                     lockedChamp = false;
                     pickedBan = false;
                     lockedBan = false;
-                    pickedSpell1 = false;
-                    pickedSpell2 = false;
                     sentChatMessages = false;
                     champSelectStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
@@ -201,8 +194,8 @@ namespace Leauge_Auto_Accept
                 }
                 lastChatRoom = currentChatRoom;
 
-                Log.Debug("pickedChamp={0} lockedChamp={1} pickedBan={2} lockedBan={3} pickedSpell1={4} pickedSpell2={5}", pickedChamp, lockedChamp, pickedBan, lockedBan, pickedSpell1, pickedSpell2, sentChatMessages);
-                if (pickedChamp && lockedChamp && pickedBan && lockedBan && pickedSpell1 && pickedSpell2 && sentChatMessages)
+                Log.Debug("pickedChamp={0} lockedChamp={1} pickedBan={2} lockedBan={3} sentChatMessages={4}", pickedChamp, lockedChamp, pickedBan, lockedBan, sentChatMessages);
+                if (pickedChamp && lockedChamp && pickedBan && lockedBan && sentChatMessages)
                 {
                     // Sleep a little if we already did everything we needed to do
                     Log.Debug("Sleep 1000");
@@ -216,7 +209,7 @@ namespace Leauge_Auto_Accept
                         pickedChamp = true;
                         lockedChamp = true;
                     }
-                    if (Settings.currentBan[1] == "0")
+                    if (Settings.currentBan[1] == "0" && Settings.secondaryBan[1] == "0")
                     {
                         pickedBan = true;
                         lockedBan = true;
@@ -265,52 +258,6 @@ namespace Leauge_Auto_Accept
                     if (!sentChatMessages)
                     {
                         handleChampSelectChat(currentChatRoom);
-                    }
-
-                    // Handle Summoner Spell selection
-                    if (Settings.currentSpell1[1] == "0")
-                    {
-                        pickedSpell1 = true;
-                    }
-                    else
-                    {
-                        var spell = Data.spellsSorted.FirstOrDefault(s => s.id == Settings.currentSpell1[1]);
-
-                        if (spell == null || !spell.gameModes.Contains(gameMode))
-                        {
-                            pickedSpell1 = true;
-                            Log.Debug("Spell 1 not available for current gamemode or not loaded, skipping");
-                        }
-                    }
-                    if (Settings.currentSpell2[1] == "0")
-                    {
-                        pickedSpell2 = true;
-                    }
-                    else
-                    {
-                        var spell = Data.spellsSorted.FirstOrDefault(s => s.id == Settings.currentSpell2[1]);
-
-                        if (spell == null || !spell.gameModes.Contains(gameMode))
-                        {
-                            pickedSpell2 = true;
-                            Log.Debug("Spell 2 not available for current gamemode or not loaded, skipping");
-                        }
-                    }
-                    if (!pickedSpell1)
-                    {
-                        var champSelectAction = LCU.clientRequest("PATCH", "lol-champ-select/v1/session/my-selection", new { spell1Id = ulong.Parse(Settings.currentSpell1[1]) }); //new { spellId = int.Parse(Settings.currentSpell1[1]) });
-                        if (champSelectAction.IsSuccessStatusCode)
-                        {
-                            pickedSpell1 = true;
-                        }
-                    }
-                    if (!pickedSpell2)
-                    {
-                        var champSelectAction = LCU.clientRequest("PATCH", "lol-champ-select/v1/session/my-selection", new { spell2Id = ulong.Parse(Settings.currentSpell2[1]) });
-                        if (champSelectAction.IsSuccessStatusCode)
-                        {
-                            pickedSpell2 = true;
-                        }
                     }
                 }
             }
@@ -489,41 +436,32 @@ namespace Leauge_Auto_Accept
                             if (pickedChamp) championId = favId; // assign only if hover succeeded
                         }
                     }
-
-                    // In arena mode runes and spells are disabled, so mark them as picked
-                    pickedSpell1 = pickedSpell2 = true;
                 }
 
                 if (!pickedChamp && championId != -3)  //TODO: -3 is what???
                 {
                     int primaryChampId = ParseId(usePrimaryChamp ? Settings.currentChamp[1] : Settings.secondaryChamp[1]);
-                    int primaryRunesId = ParseId(usePrimaryChamp ? Settings.currentChampRunes[1] : Settings.secondaryChampRunes[1]);
                     int backupChampId = ParseId(usePrimaryChamp ? Settings.currentBackupChamp[1] : Settings.secondaryBackupChamp[1]);
-                    int backupRunesId = ParseId(usePrimaryChamp ? Settings.currentBackupChampRunes[1] : Settings.secondaryBackupChampRunes[1]);
 
                     if (primaryChampId == 0 && !usePrimaryChamp)
                     {
                         primaryChampId = ParseId(Settings.currentChamp[1]);
-                        primaryRunesId = ParseId(Settings.currentChampRunes[1]);
                     }
                     if (backupChampId == 0 && !usePrimaryChamp)
                     {
                         backupChampId = ParseId(Settings.currentBackupChamp[1]);
-                        backupRunesId = ParseId(Settings.currentBackupChampRunes[1]);
                     }
 
                     // Try first choice based on player is assigned primary or secondary role
                     if (primaryChampId > 0)
                     {
                         hoverChampion(actId, primaryChampId, "pick");
-                        handleRunes(primaryRunesId);
                     }
 
                     // If first choice didn't work (pickedChamp is still false), try second choice
                     if (!pickedChamp && backupChampId > 0)
                     {
                         hoverChampion(actId, backupChampId, "pick");
-                        handleRunes(backupRunesId);
                         if (pickedChamp) championId = backupChampId;
                     }
                     else
@@ -574,25 +512,38 @@ namespace Leauge_Auto_Accept
 
                     if (currentTime - Settings.banStartHoverDelay > champSelectStart) // Check if enough time has passed since planning phase has started
                     {
+                        bool usePrimaryBan = handleChampPositionPreferences(currentChampSelect, currentChampSelect.LocalPlayerCellId);
+                        string[] banTargets = getBanTargets(usePrimaryBan);
+                        string banId = banTargets[0];
+                        string backupBanId = banTargets[1];
+
                         // Ban none if the setting is disabled.
-                        bool dontBanCrowd = isArena && Settings.banCrowdFavourite && isInCrowdFavoriteChamps(Settings.currentBan[1]);
+                        bool dontBanCrowd = isArena && Settings.banCrowdFavourite && isInCrowdFavoriteChamps(banId);
 
                         string banTargetId;
                         if (dontBanCrowd)
                         {
                             banTargetId = "0";
                         }
-                        else if (isTeammateOnChampion(currentChampSelect, Settings.currentBan[1]))
+                        else if (ParseId(banId) == 0)
+                        {
+                            // Only the other role has a ban selected, leave this one to the player
+                            pickedBan = true;
+                            lockedBan = true;
+                            return;
+                        }
+                        else if (isTeammateOnChampion(currentChampSelect, banId))
                         {
                             // Avoid banning a champion a teammate already picked or is intent on picking
-                            banTargetId = Settings.currentBackupBan[1];
+                            banTargetId = backupBanId;
                         }
                         else
                         {
-                            banTargetId = Settings.currentBan[1];
+                            banTargetId = banId;
                         }
 
                         hoverChampion(actId, ParseId(banTargetId), "ban");
+                        if (pickedBan) championId = ParseId(banTargetId); // Instaban locks in this same pass
                     }
                 }
 
@@ -611,6 +562,24 @@ namespace Leauge_Auto_Accept
             }
         }
 
+        // Returns the ban and backup ban for the assigned role, unselected secondary bans fall back to the primary ones
+        private static string[] getBanTargets(bool usePrimaryBan)
+        {
+            string banId = usePrimaryBan ? Settings.currentBan[1] : Settings.secondaryBan[1];
+            string backupBanId = usePrimaryBan ? Settings.currentBackupBan[1] : Settings.secondaryBackupBan[1];
+
+            if (ParseId(banId) == 0)
+            {
+                banId = Settings.currentBan[1];
+            }
+            if (ParseId(backupBanId) == 0)
+            {
+                backupBanId = Settings.currentBackupBan[1];
+            }
+
+            return new string[] { banId, backupBanId };
+        }
+
         private static void hoverChampion(int actId, int currentChampId, string actType)
         {
             var champSelectAction = LCU.clientRequest("PATCH", $"lol-champ-select/v1/session/actions/{actId}", new { championId = currentChampId });
@@ -625,17 +594,6 @@ namespace Leauge_Auto_Accept
                     pickedBan = true;
                 }
             }
-        }
-
-        private static void handleRunes(int currentRunesId)
-        {
-            if (currentRunesId <= 0)
-            {
-                return;
-            }
-
-            Log.Info("handleRunes: currentRunesId={0}", currentRunesId);
-            var runesResp = LCU.clientRequest("PUT", "lol-perks/v1/currentpage", $"{currentRunesId}");
         }
 
         private static void lockChampion(int actId, int championId, string actType)
