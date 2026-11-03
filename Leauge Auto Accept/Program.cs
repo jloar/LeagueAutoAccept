@@ -16,6 +16,8 @@ namespace Leauge_Auto_Accept
 {
     class Program
     {
+        private static readonly NLog.ILogger Log = NLog.LogManager.GetCurrentClassLogger();
+
         private static void Main()
         {
             //force culture to be invariant for now.
@@ -56,13 +58,13 @@ namespace Leauge_Auto_Accept
             Updater.initialize();
 
             // Start a bunch of task
-            var taskKeys = new Task(Navigation.ReadKeys);
+            var taskKeys = new Task(() => runGuarded(Navigation.ReadKeys));
             taskKeys.Start();
-            var taskQueue = new Task(MainLogic.acceptQueue);
+            var taskQueue = new Task(() => runGuarded(MainLogic.acceptQueue));
             taskQueue.Start();
-            var taskLeagueAlive = new Task(LCU.CheckIfLeagueClientIsOpenTask);
+            var taskLeagueAlive = new Task(() => runGuarded(LCU.CheckIfLeagueClientIsOpenTask));
             taskLeagueAlive.Start();
-            var taskResizeHandler = new Task(SizeHandler.SizeReader);
+            var taskResizeHandler = new Task(() => runGuarded(SizeHandler.SizeReader));
             taskResizeHandler.Start();
 
             // Indefinitely await them
@@ -70,6 +72,25 @@ namespace Leauge_Auto_Accept
             Task.WaitAll(tasks);
 
             Console.ReadKey();
+        }
+
+        // An exception in a task is only observed once every task has ended, and these never end,
+        // so without this a crashed loop would stop silently while the app appears to keep running
+        private static void runGuarded(Action loop)
+        {
+            while (true)
+            {
+                try
+                {
+                    loop();
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Background task {0} crashed, restarting it.", loop.Method.Name);
+                    Thread.Sleep(2000);
+                }
+            }
         }
     }
 }

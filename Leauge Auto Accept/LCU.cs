@@ -25,6 +25,9 @@ namespace Leauge_Auto_Accept
 
         public static void CheckIfLeagueClientIsOpenTask()
         {
+            // Redo the client setup if this task is restarted after a crash
+            lcuPid = 0;
+
             while (true)
             {
                 Process client = Process.GetProcessesByName("LeagueClientUx").FirstOrDefault();
@@ -55,8 +58,18 @@ namespace Leauge_Auto_Accept
                         // Check if preload data was enabled last time
                         if (Settings.preloadData)
                         {
-                            bool championsLoaded = Data.loadChampionsList();
-                            bool spellsLoaded = Data.loadSpellsList();
+                            bool championsLoaded = false;
+                            bool spellsLoaded = false;
+                            try
+                            {
+                                championsLoaded = Data.loadChampionsList();
+                                spellsLoaded = Data.loadSpellsList();
+                            }
+                            catch (Exception ex)
+                            {
+                                // Riot can change these responses in any patch, that should not block the main menu
+                                Log.Error(ex, "Failed to preload League data.");
+                            }
                             if (!championsLoaded || !spellsLoaded)
                             {
                                 Console.Clear();
